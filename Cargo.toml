@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.37"
 structopt = "0.3.26"
+regex = "1"
