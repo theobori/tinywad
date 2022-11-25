@@ -18,23 +18,20 @@ impl Display for Unknown {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
         write!(
             f,
-            "Name: {} -- Size: {}",
-            self.info.name(),
-            self.info.size
+            "Name: {}, Size: {}, Offset: {}",
+            self.info.name_ascii(),
+            self.info.size,
+            self.info.pos
         )
     }
 }
 
 impl Lump for Unknown {
-    fn parse(&mut self, buffer: &[u8]) {
+    fn parse(&mut self, _buffer: &[u8]) {
 
     }
 
-    fn save_as(&self, path: &str) {
-        
-    }
-
-    fn save(&self) {
-        
+    fn save_as(&self, _dir: &str) {
+    
     }
 }

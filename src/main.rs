@@ -19,7 +19,7 @@ struct Opt {
     /// Match lumps name regex, matching everything by default
     #[structopt(long)]
     re: Option<String>,
-    /// Operation <dump, extract>
+    /// Operation <dump, save, save_as>
     #[structopt(long)]
     op: Option<WadOperationKind>,
     /// Optional output directory
@@ -67,13 +67,14 @@ fn main() -> Result<(), WadError> {
 
     match op {
         WadOperationKind::Dump => wad.dump(),
-        WadOperationKind::Extract => {
+        WadOperationKind::Save => wad.save(),
+        WadOperationKind::SaveAs => {
             if args.dir.is_none() {
-                wad.extract();
+                wad.save()
             } else {
-                wad.extract_in(args.dir.unwrap());
+                wad.save_as(args.dir.unwrap());
             }
-        },
+        }
     };
 
     Ok(())

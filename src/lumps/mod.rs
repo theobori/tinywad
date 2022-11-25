@@ -1,6 +1,8 @@
 /// Color palette
 pub mod palette;
-/// Patch
-pub mod patch;
+/// Image
+pub mod doom_image;
 /// Unknown lump 
 pub mod unknown;
+/// Flat
+pub mod flat;

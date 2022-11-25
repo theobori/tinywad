@@ -2,19 +2,21 @@ use std::{
     path::Path,
     fs::File,
     io::Read,
-    collections::HashMap,
+    collections::LinkedList,
     mem::size_of, str::FromStr
 };
 
 use regex::Regex;
+use lazy_static::lazy_static;
+use linked_hash_map::LinkedHashMap;
 
 use crate::{
     error::WadError,
-    lump::LumpInfo,
+    lump::{LumpInfo, LumpKind},
     models::{lump::Lump, operation::WadOperation},
     lumps::{
         palette::Palettes,
-        unknown::Unknown
+        unknown::Unknown, doom_image::DoomImage, flat::Flat
     }
 };
 
@@ -43,7 +45,8 @@ impl From<&[u8]> for WadKind {
 #[derive(Debug, Clone, Copy)]
 pub enum WadOperationKind {
     Dump,
-    Extract
+    Save,
+    SaveAs
 }
 
 impl Default for WadOperationKind{
@@ -58,7 +61,8 @@ impl FromStr for WadOperationKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let value = match s {
             "dump" => Self::Dump,
-            "extract" => Self::Extract,
+            "save" => Self::Save,
+            "save_as" => Self::SaveAs,
             _ => return Err(WadError::InvalidOperation)
         };
 
@@ -88,20 +92,31 @@ impl Default for WadInfo {
 
 impl From<&[u8]> for WadInfo {
     fn from(bytes: &[u8]) -> Self {
-        let lumps_bytes: [u8; 4] = bytes[4..8]
-            .try_into()
-            .unwrap_or_default();
-    
-        let dir_bytes: [u8; 4] = bytes[8..12]
-            .try_into()
-            .unwrap_or_default();
-        
         Self {
             kind: WadKind::from(&bytes[0..4]),
-            num_lumps: i32::from_le_bytes(lumps_bytes),
-            dir_pos: i32::from_le_bytes(dir_bytes),
+            num_lumps: i32::from_le_bytes(
+                bytes[4..8]
+                    .try_into()
+                    .unwrap_or_default()
+            ),
+            dir_pos: i32::from_le_bytes(
+                bytes[8..12]
+                    .try_into()
+                    .unwrap_or_default()
+            ),
         }
     }
+}
+
+lazy_static! {
+    /// Flat start lump name
+    static ref RE_F_START: Regex = Regex::new("F[0-9]+_START").unwrap();
+    /// Flat end lump name
+    static ref RE_F_END: Regex = Regex::new("F[0-9]+_END").unwrap();
+    /// Patch/Sprite start lump name
+    static ref RE_S_START: Regex = Regex::new("S[0-9]+_START").unwrap();
+    /// Patch/Sprite end lump name
+    static ref RE_S_END: Regex = Regex::new("S[0-9]+_END").unwrap();
 }
 
 /// WAD controller, it includes features like extract, dump, etc..
@@ -109,7 +124,7 @@ pub struct Wad {
     /// File type (IWAD or PWAD)
     info: WadInfo,
     /// Lumps <Name, Infos>
-    lumps: HashMap<String, Box<dyn Lump>>,
+    lumps: LinkedHashMap<String, Box<dyn Lump>>,
     /// Buffer a.k.a file content
     buffer: Vec<u8>,
     /// Filter (regex)
@@ -120,42 +135,119 @@ impl Wad {
     pub fn new(re_name: Regex) -> Self {
         Self {
             info: WadInfo::default(),
-            lumps: HashMap::new(),
+            lumps: LinkedHashMap::new(),
             buffer: Vec::new(),
             re_name
+        }
+    }
+
+    /// Update the marker, handling the 0 bytes lumps like flat/patch delimiters
+    fn set_marker(&self, marker: &mut LinkedList<LumpKind>, name: &str) {
+        if RE_F_START.is_match(name) {
+            marker.push_back(LumpKind::Flat);
+        } 
+        
+        if RE_S_START.is_match(name) {
+            marker.push_back(LumpKind::Patch);
+        } 
+        
+        if RE_F_END.is_match(name) {
+            marker.pop_back();
+        }
+        
+        if RE_S_END.is_match(name) {
+            marker.pop_back();
         }
     }
 
     /// Iterating over the directory and filling `self.lumps`
     fn parse_dir(&mut self) {
         let size = size_of::<LumpInfo>();
-        let mut palettes = None;
+        let mut palettes = Palettes::default();
+        let mut marker: LinkedList<LumpKind> = LinkedList::new();
 
         for lump_num in 0..(self.info.num_lumps as usize) {
             let index = (self.info.dir_pos as usize) + (lump_num * size);
             let info_bytes = &self.buffer[index..index + size];
-            
+
             // Get lump informations
             let info = LumpInfo::from(info_bytes);
 
             // Get the right lump
             let name = info.name_ascii();
+
             let mut lump: Box<dyn Lump> = match &*name {
                 "PLAYPAL" => {
-                    let p = Palettes {
+                    let mut p = Palettes {
                         info,
                         palettes: Vec::new()
                     };
 
-                    palettes = Some(p.clone());
+                    // Special case that must be parsed before copied
+                    p.parse(&self.buffer[(info.pos as usize)..]);
+                    
+                    palettes = p.clone();
+
                     Box::new(p)
                 },
-                _ => Box::new(Unknown { info })
+
+                "F_START" => {
+                    marker.push_back(LumpKind::Flat);
+
+                    Box::new(Unknown { info })
+                },
+
+                "F_END" => {
+                    marker.pop_back();
+
+                    Box::new(Unknown { info })
+                },
+
+                "S_START" | "SS_START" => {
+                    marker.push_back(LumpKind::Patch);
+
+                    Box::new(Unknown { info })
+                },
+
+                "S_END" | "SS_END" => {
+                    marker.pop_back();
+
+                    Box::new(Unknown { info })
+                },
+
+                _ => {
+                    // Check the lump name with regex for marker
+                    self.set_marker(&mut marker, &name);
+
+                    if info.size > 0 && marker.len() > 0 {
+                        let last = marker.back().unwrap();
+
+                        match last {
+                            LumpKind::Patch => {
+                                // Match the engine (DOOM, HEXEN, etc...)
+                                // Only intended for the DOOM engine right now
+                                Box::new(DoomImage::new(
+                                    info,
+                                    palettes.clone(),
+                                ))
+                            },
+                            LumpKind::Flat => {
+                                Box::new(Flat::new(
+                                    info,
+                                    palettes.clone()
+                                ))
+                            },
+                            _ => Box::new(Unknown { info })
+                        }
+                    } else {
+                        Box::new(Unknown { info })
+                    }
+                }
             };
 
             // Fetch and decode data from the WAD buffer
-            lump.parse(&self.buffer);
-            
+            lump.parse(&self.buffer[(info.pos as usize)..]);
+
             // Add the lump to the hashmap
             self.lumps.insert(name, lump);
         }
@@ -226,16 +318,16 @@ impl WadOperation for Wad {
         self.it_lumps(| lump | println!("{}", lump));
     }
 
-    fn extract(&self) {
+    fn save(&self) {
         self.it_lumps(| lump | lump.save());
     }
 
-    fn extract_in<P: AsRef<Path>>(&self, path: P) {
-        let path = path.as_ref().to_str().unwrap();
+    fn save_as<P: AsRef<Path>>(&self, dir: P) {
+        let dir = dir.as_ref().to_str().unwrap();
 
         for (name, lump) in self.lumps.iter() {
             if self.re_name.is_match(name) {
-                lump.save_as(path);
+                lump.save_as(dir);
             }
         }
     }

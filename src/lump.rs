@@ -1,24 +1,11 @@
-use std::str;
-
-/// Marker available attached lump kind
-pub enum MarkerKind {
-    Flat,
-    Patch
-}
-
-/// Marker state
-pub enum MarkerState {
-    Start,
-    End
-}
-
 /// Lumps kind implementing the `Lump` trait
+#[derive(Clone, PartialEq, Copy)]
 pub enum LumpKind {
     Flat,
     Patch,
     Sound,
     /// 0 bytes lump
-    Marker(MarkerKind, MarkerState),
+    ImageDelimiter,
     /// Unidentified lump
     Unknown
 }
@@ -38,6 +25,16 @@ pub struct LumpInfo {
     pub size: i32,
     /// Lump name, it only contains in theory [A-Z][0-9] (8 bytes)
     pub name: [u8; 8]
+}
+
+impl Default for LumpInfo {
+    fn default() -> Self {
+        Self {
+            pos: 0,
+            size: 0,
+            name: [0x00; 8]
+        }
+    }
 }
 
 impl LumpInfo {
@@ -60,20 +57,18 @@ impl LumpInfo {
 
 impl From<&[u8]> for LumpInfo {
     fn from(bytes: &[u8]) -> Self {
-        let pos_bytes: [u8; 4] = bytes[0..4]
-            .try_into()
-            .unwrap_or_default();
-    
-        let size_bytes: [u8; 4] = bytes[4..8]
-            .try_into()
-            .unwrap_or_default();
-
-        let name = &bytes[8..16];
-
         Self {
-            pos: i32::from_le_bytes(pos_bytes),
-            size: i32::from_le_bytes(size_bytes),
-            name: name
+            pos: i32::from_le_bytes(
+                bytes[0..4]
+                    .try_into()
+                    .unwrap_or_default()
+            ),
+            size: i32::from_le_bytes(
+                bytes[4..8]
+                    .try_into()
+                    .unwrap_or_default()
+            ),
+            name: bytes[8..16]
                 .try_into()
                 .unwrap_or_default(),
         }

@@ -8,3 +8,5 @@ pub mod lump;
 pub mod models;
 /// The differents lump kinds
 pub mod lumps;
+/// Some properties
+pub mod properties;

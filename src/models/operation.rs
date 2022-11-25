@@ -5,7 +5,7 @@ pub trait WadOperation {
     /// Dump
     fn dump(&self);
     /// Extract as file(s)
-    fn extract(&self);
+    fn save(&self);
     /// Extract as file(s) in the directory `path`
-    fn extract_in<P: AsRef<Path>>(&self, path: P);
+    fn save_as<P: AsRef<Path>>(&self, path: P);
 }
