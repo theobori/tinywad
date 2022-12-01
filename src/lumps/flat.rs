@@ -61,7 +61,7 @@ impl Display for Flat {
 impl Lump for Flat {
     fn parse(&mut self, buffer: &[u8]) {
         let palette = self.palettes
-            .palette(0)
+            .palette()
             .unwrap();
         
         for i in 0..FLAT_SIZE {

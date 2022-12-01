@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::StructOpt;
@@ -19,12 +20,15 @@ struct Opt {
     /// Match lumps name regex, matching everything by default
     #[structopt(long)]
     re: Option<String>,
-    /// Operation <dump, save, save_as>
+    /// Operation <dump, save, save_as>, dump by default
     #[structopt(long)]
     op: Option<WadOperationKind>,
     /// Optional output directory
     #[structopt(long)]
-    dir: Option<String>
+    dir: Option<String>,
+    /// Custom palette index, 0 by default
+    #[structopt(long)]
+    pal: Option<usize>,
 }
 
 impl Opt {
@@ -51,6 +55,11 @@ impl Opt {
     pub fn op(&self) -> WadOperationKind {
         self.op.unwrap_or_default()
     }
+
+    /// Get the palette index
+    pub fn pal(&self) -> usize {
+        self.pal.unwrap_or(0)
+    }
 }
 
 
@@ -63,6 +72,7 @@ fn main() -> Result<(), WadError> {
     // WAD manager
     let mut wad = Wad::new(re);
 
+    wad.set_palette(args.pal());
     wad.load_from_file(args.path)?;
 
     match op {
@@ -72,7 +82,17 @@ fn main() -> Result<(), WadError> {
             if args.dir.is_none() {
                 wad.save()
             } else {
-                wad.save_as(args.dir.unwrap());
+
+                let dirs = args.dir.unwrap();
+                let created_dirs = fs::create_dir_all(dirs.clone());
+
+                if created_dirs.is_err() {
+                    return Err(WadError::Write);
+                } else {
+                    created_dirs.unwrap();
+                }
+
+                wad.save_as(dirs);
             }
         }
     };

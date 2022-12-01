@@ -129,6 +129,8 @@ pub struct Wad {
     buffer: Vec<u8>,
     /// Filter (regex)
     re_name: Regex,
+    /// Palette
+    pal: Palettes
 }
 
 impl Wad {
@@ -137,8 +139,14 @@ impl Wad {
             info: WadInfo::default(),
             lumps: LinkedHashMap::new(),
             buffer: Vec::new(),
-            re_name
+            re_name,
+            pal: Palettes::default()
         }
+    }
+
+    /// Set the palette index
+    pub fn set_palette(&mut self, value: usize) {
+        self.pal.set_n(value);
     }
 
     /// Update the marker, handling the 0 bytes lumps like flat/patch delimiters
@@ -151,11 +159,7 @@ impl Wad {
             marker.push_back(LumpKind::Patch);
         } 
         
-        if RE_F_END.is_match(name) {
-            marker.pop_back();
-        }
-        
-        if RE_S_END.is_match(name) {
+        if RE_F_END.is_match(name) || RE_S_END.is_match(name){
             marker.pop_back();
         }
     }
@@ -163,32 +167,25 @@ impl Wad {
     /// Iterating over the directory and filling `self.lumps`
     fn parse_dir(&mut self) {
         let size = size_of::<LumpInfo>();
-        let mut palettes = Palettes::default();
         let mut marker: LinkedList<LumpKind> = LinkedList::new();
 
         for lump_num in 0..(self.info.num_lumps as usize) {
             let index = (self.info.dir_pos as usize) + (lump_num * size);
-            let info_bytes = &self.buffer[index..index + size];
+            let buffer = &self.buffer[index..index + size];
 
             // Get lump informations
-            let info = LumpInfo::from(info_bytes);
+            let info = LumpInfo::from(buffer);
 
             // Get the right lump
             let name = info.name_ascii();
 
             let mut lump: Box<dyn Lump> = match &*name {
                 "PLAYPAL" => {
-                    let mut p = Palettes {
-                        info,
-                        palettes: Vec::new()
-                    };
-
+                    self.pal.set_info(info);
                     // Special case that must be parsed before copied
-                    p.parse(&self.buffer[(info.pos as usize)..]);
+                    self.pal.parse(&self.buffer[(info.pos as usize)..]);
                     
-                    palettes = p.clone();
-
-                    Box::new(p)
+                    Box::new(self.pal.clone())
                 },
 
                 "F_START" => {
@@ -228,13 +225,13 @@ impl Wad {
                                 // Only intended for the DOOM engine right now
                                 Box::new(DoomImage::new(
                                     info,
-                                    palettes.clone(),
+                                    self.pal.clone(),
                                 ))
                             },
                             LumpKind::Flat => {
                                 Box::new(Flat::new(
                                     info,
-                                    palettes.clone()
+                                    self.pal.clone()
                                 ))
                             },
                             _ => Box::new(Unknown { info })

@@ -164,7 +164,7 @@ impl Lump for DoomImage {
         let mut buffer: Vec<u8> = Vec::new();
 
         let palette = self.palettes
-            .palette(0)
+            .palette()
             .unwrap();
 
         let (mut r, mut g, mut b, mut a): (u8, u8, u8, u8);

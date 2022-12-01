@@ -25,14 +25,17 @@ pub struct Palettes {
     /// Lump metadata
     pub info: LumpInfo,
     /// Data a.k.a the palettes (array of 768 bytes -> 256 * 3)
-    pub palettes: Vec<Palette>
+    pub palettes: Vec<Palette>,
+    /// Get the `n` palette
+    n: usize
 }
 
 impl Default for Palettes {
     fn default() -> Self {
         Self {
             info: LumpInfo::default(),
-            palettes: Vec::new()
+            palettes: Vec::new(),
+            n: 0
         }
     }
 }
@@ -44,13 +47,13 @@ impl Palettes {
     }
 
     /// Get a palette
-    pub fn palette(&self, n: usize) -> Option<Palette> {
-        self.palettes.get(n).cloned()
+    pub fn palette(&self) -> Option<Palette> {
+        self.palettes.get(self.n).cloned()
     }
 
     /// Get a palette in a byte (u8) format
     pub fn palette_as_bytes(&self, n: usize) -> Vec<u8> {
-        let palette = self.palette(n);
+        let palette = self.palettes.get(n).cloned();
 
         if palette.is_none() {
             return Vec::new();
@@ -68,6 +71,16 @@ impl Palettes {
         }
 
         ret            
+    }
+
+    /// Set the `n` property
+    pub fn set_n(&mut self, value: usize) {
+        self.n = value;
+    }
+
+    /// Set the lump metadatas
+    pub fn set_info(&mut self, info: LumpInfo) {
+        self.info = info;
     }
 }
 

@@ -14,6 +14,8 @@ pub enum WadError {
     InvalidRegex,
     #[error("Invalid operation")]
     InvalidOperation,
+    #[error("Unable create resources")]
+    Write,
     #[error("Unable to use this API")]
     Unknown
 }
