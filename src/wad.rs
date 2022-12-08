@@ -2,29 +2,23 @@ use std::{
     path::Path,
     fs::File,
     io::Read,
-    collections::LinkedList,
-    mem::size_of, str::FromStr
+   str::FromStr
 };
 
-use regex::Regex;
-use lazy_static::lazy_static;
 use linked_hash_map::LinkedHashMap;
+use regex::Regex;
 
 use crate::{
     error::WadError,
-    lump::{LumpInfo, LumpKind},
-    models::{lump::Lump, operation::WadOperation},
-    lumps::{
-        palette::Palettes,
-        unknown::Unknown, doom_image::DoomImage, flat::Flat
-    }
+    models::operation::WadOperation,
+    dir::LumpsDirectory, lumps::palette::Palettes
 };
 
 /// Default re_name used by the `Wad` struct
 pub const DEFAULT_RE_NAME: &'static str = r".*";
 
 /// WAD types
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum WadKind {
     Iwad,
     Pwad,
@@ -71,6 +65,7 @@ impl FromStr for WadOperationKind {
 }
 
 /// Wad metadata (12 bytes)
+#[derive(Clone, Copy)]
 pub struct WadInfo {
     /// Represents the file type (4 bytes)
     pub kind: WadKind,
@@ -108,146 +103,34 @@ impl From<&[u8]> for WadInfo {
     }
 }
 
-lazy_static! {
-    /// Flat start lump name
-    static ref RE_F_START: Regex = Regex::new("F[0-9]+_START").unwrap();
-    /// Flat end lump name
-    static ref RE_F_END: Regex = Regex::new("F[0-9]+_END").unwrap();
-    /// Patch/Sprite start lump name
-    static ref RE_S_START: Regex = Regex::new("S[0-9]+_START").unwrap();
-    /// Patch/Sprite end lump name
-    static ref RE_S_END: Regex = Regex::new("S[0-9]+_END").unwrap();
-}
-
 /// WAD controller, it includes features like extract, dump, etc..
 pub struct Wad {
     /// File type (IWAD or PWAD)
     info: WadInfo,
-    /// Lumps <Name, Infos>
-    lumps: LinkedHashMap<String, Box<dyn Lump>>,
     /// Buffer a.k.a file content
     buffer: Vec<u8>,
     /// Filter (regex)
     re_name: Regex,
-    /// Palette
-    pal: Palettes
+    /// Lumps directory
+    dir: LumpsDirectory
 }
 
 impl Wad {
     pub fn new(re_name: Regex) -> Self {
         Self {
             info: WadInfo::default(),
-            lumps: LinkedHashMap::new(),
             buffer: Vec::new(),
             re_name,
-            pal: Palettes::default()
+            dir: LumpsDirectory {
+                lumps: LinkedHashMap::new(),
+                pal: Palettes::default()
+            }
         }
     }
 
-    /// Set the palette index
+    /// Set a palette that will be applied on every lump
     pub fn set_palette(&mut self, value: usize) {
-        self.pal.set_n(value);
-    }
-
-    /// Update the marker, handling the 0 bytes lumps like flat/patch delimiters
-    fn set_marker(&self, marker: &mut LinkedList<LumpKind>, name: &str) {
-        if RE_F_START.is_match(name) {
-            marker.push_back(LumpKind::Flat);
-        } 
-        
-        if RE_S_START.is_match(name) {
-            marker.push_back(LumpKind::Patch);
-        } 
-        
-        if RE_F_END.is_match(name) || RE_S_END.is_match(name){
-            marker.pop_back();
-        }
-    }
-
-    /// Iterating over the directory and filling `self.lumps`
-    fn parse_dir(&mut self) {
-        let size = size_of::<LumpInfo>();
-        let mut marker: LinkedList<LumpKind> = LinkedList::new();
-
-        for lump_num in 0..(self.info.num_lumps as usize) {
-            let index = (self.info.dir_pos as usize) + (lump_num * size);
-            let buffer = &self.buffer[index..index + size];
-
-            // Get lump informations
-            let info = LumpInfo::from(buffer);
-
-            // Get the right lump
-            let name = info.name_ascii();
-
-            let mut lump: Box<dyn Lump> = match &*name {
-                "PLAYPAL" => {
-                    self.pal.set_info(info);
-                    // Special case that must be parsed before copied
-                    self.pal.parse(&self.buffer[(info.pos as usize)..]);
-                    
-                    Box::new(self.pal.clone())
-                },
-
-                "F_START" => {
-                    marker.push_back(LumpKind::Flat);
-
-                    Box::new(Unknown { info })
-                },
-
-                "F_END" => {
-                    marker.pop_back();
-
-                    Box::new(Unknown { info })
-                },
-
-                "S_START" | "SS_START" => {
-                    marker.push_back(LumpKind::Patch);
-
-                    Box::new(Unknown { info })
-                },
-
-                "S_END" | "SS_END" => {
-                    marker.pop_back();
-
-                    Box::new(Unknown { info })
-                },
-
-                _ => {
-                    // Check the lump name with regex for marker
-                    self.set_marker(&mut marker, &name);
-
-                    if info.size > 0 && marker.len() > 0 {
-                        let last = marker.back().unwrap();
-
-                        match last {
-                            LumpKind::Patch => {
-                                // Match the engine (DOOM, HEXEN, etc...)
-                                // Only intended for the DOOM engine right now
-                                Box::new(DoomImage::new(
-                                    info,
-                                    self.pal.clone(),
-                                ))
-                            },
-                            LumpKind::Flat => {
-                                Box::new(Flat::new(
-                                    info,
-                                    self.pal.clone()
-                                ))
-                            },
-                            _ => Box::new(Unknown { info })
-                        }
-                    } else {
-                        Box::new(Unknown { info })
-                    }
-                }
-            };
-
-            // Fetch and decode data from the WAD buffer
-            lump.parse(&self.buffer[(info.pos as usize)..]);
-
-            // Add the lump to the hashmap
-            self.lumps.insert(name, lump);
-        }
+        self.dir.set_palette(value);
     }
 
     /// Parse a buffer into lumps entries
@@ -274,7 +157,7 @@ impl Wad {
         }
 
         // Parse lumps
-        self.parse_dir();
+        self.dir.parse(self.info, &self.buffer);
 
         Ok(())
     }
@@ -299,33 +182,29 @@ impl Wad {
             Err(e) => Err(WadError::Read(e.to_string()))
         }
     }
-
-    /// Iterate then calling a function on the matching lumps
-    fn it_lumps(&self, f: fn(&Box<dyn Lump>) ) {
-        for (name, lump) in self.lumps.iter() {
-            if self.re_name.is_match(name) {
-                f(lump);
-            }
-        }
-    }
 }
 
 impl WadOperation for Wad {
     fn dump(&self) {
-        self.it_lumps(| lump | println!("{}", lump));
+        self.dir.callback_lumps(
+            self.re_name.clone(),
+            | lump | println!("{}", lump)
+        );
     }
 
     fn save(&self) {
-        self.it_lumps(| lump | lump.save());
+        self.dir.callback_lumps(
+            self.re_name.clone(),
+            | lump | lump.save()
+        );
     }
 
     fn save_as<P: AsRef<Path>>(&self, dir: P) {
         let dir = dir.as_ref().to_str().unwrap();
 
-        for (name, lump) in self.lumps.iter() {
-            if self.re_name.is_match(name) {
-                lump.save_as(dir);
-            }
-        }
+        self.dir.callback_lumps(
+            self.re_name.clone(),
+            | lump | lump.save_as(dir)
+        );
     }
 }

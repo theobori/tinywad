@@ -62,6 +62,18 @@ impl Opt {
     }
 }
 
+/// Create directories if needed
+fn create_dirs(dirname: String) -> Result<(), WadError> {
+    let created_dirs = fs::create_dir_all(dirname);
+
+    if created_dirs.is_err() {
+        return Err(WadError::Write);
+    } else {
+        created_dirs.unwrap();
+    }
+
+    Ok(())
+}
 
 fn main() -> Result<(), WadError> {
     // Arguments
@@ -79,20 +91,12 @@ fn main() -> Result<(), WadError> {
         WadOperationKind::Dump => wad.dump(),
         WadOperationKind::Save => wad.save(),
         WadOperationKind::SaveAs => {
-            if args.dir.is_none() {
-                wad.save()
-            } else {
-
-                let dirs = args.dir.unwrap();
-                let created_dirs = fs::create_dir_all(dirs.clone());
-
-                if created_dirs.is_err() {
-                    return Err(WadError::Write);
-                } else {
-                    created_dirs.unwrap();
-                }
-
-                wad.save_as(dirs);
+            match args.dir {
+                Some(dirname) => {
+                    create_dirs(dirname.clone())?;
+                    wad.save_as(dirname);
+                },
+                None => wad.save()
             }
         }
     };

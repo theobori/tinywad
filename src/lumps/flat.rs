@@ -48,7 +48,7 @@ impl Display for Flat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
         write!(
             f,
-            "Name: {}, Size: {}, , Offset: {}, Width: {}, Height: {}",
+            "Name: {}, Size: {}, Offset: {}, Width: {}, Height: {}",
             self.info.name_ascii(),
             self.info.size,
             self.info.pos,

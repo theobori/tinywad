@@ -10,3 +10,5 @@ pub mod models;
 pub mod lumps;
 /// Some properties
 pub mod properties;
+/// Lumps directory
+pub mod dir;

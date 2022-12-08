@@ -90,13 +90,39 @@ impl DoomImage {
             palettes,
         }
     }
+
+    /// Get the final image buffer, structured as a RGBA format
+    fn buffer(&self) -> Vec<u8> {
+        let mut buffer: Vec<u8> = Vec::new();
+
+        let palette = self.palettes
+            .palette()
+            .unwrap();
+
+        let (mut r, mut g, mut b, mut a): (u8, u8, u8, u8);
+
+        for byte in self.pixels.iter() {
+            if byte.is_none() {
+                (r, g, b, a) = (0, 0, 0, 0);
+            } else {
+                (r, g, b, a) = palette[byte.unwrap() as usize].into();
+            }
+    
+            buffer.push(r);
+            buffer.push(g);
+            buffer.push(b);
+            buffer.push(a);
+        }
+
+        buffer
+    }
 }
 
 impl Display for DoomImage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
         write!(
             f,
-            "Name: {}, Size: {}, , Offset: {}, Width: {}, Height: {}",
+            "Name: {}, Size: {}, Offset: {}, Width: {}, Height: {}",
             self.info.name_ascii(),
             self.info.size,
             self.info.pos,
@@ -161,27 +187,6 @@ impl Lump for DoomImage {
     }        
 
     fn save_as(&self, dir: &str) {
-        let mut buffer: Vec<u8> = Vec::new();
-
-        let palette = self.palettes
-            .palette()
-            .unwrap();
-
-        let (mut r, mut g, mut b, mut a): (u8, u8, u8, u8);
-
-        for byte in self.pixels.iter() {
-            if byte.is_none() {
-                (r, g, b, a) = (0, 0, 0, 0);
-            } else {
-                (r, g, b, a) = palette[byte.unwrap() as usize].into();
-            }
-    
-            buffer.push(r);
-            buffer.push(g);
-            buffer.push(b);
-            buffer.push(a);
-        }
-
         let path = format!(
             "{}/{}.png",
             dir,
@@ -190,7 +195,7 @@ impl Lump for DoomImage {
 
         image::save_buffer(
             Path::new(&path),
-            &buffer,
+            &self.buffer(),
             self.img_info.width as u32,
             self.img_info.height as u32,
             image::ColorType::Rgba8
