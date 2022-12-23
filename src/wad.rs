@@ -40,7 +40,8 @@ impl From<&[u8]> for WadKind {
 pub enum WadOperationKind {
     Dump,
     Save,
-    SaveAs
+    SaveAs,
+    Remove
 }
 
 impl Default for WadOperationKind{
@@ -57,6 +58,7 @@ impl FromStr for WadOperationKind {
             "dump" => Self::Dump,
             "save" => Self::Save,
             "save_as" => Self::SaveAs,
+            "remove" => Self::Remove,
             _ => return Err(WadError::InvalidOperation)
         };
 
@@ -64,7 +66,7 @@ impl FromStr for WadOperationKind {
     } 
 }
 
-/// Wad metadata (12 bytes)
+/// Wad metadata (header) (12 bytes)
 #[derive(Clone, Copy)]
 pub struct WadInfo {
     /// Represents the file type (4 bytes)
@@ -206,5 +208,9 @@ impl WadOperation for Wad {
             self.re_name.clone(),
             | lump | lump.save_as(dir)
         );
+    }
+
+    fn remove(&mut self) {
+        self.info.num_lumps -= 1;
     }
 }

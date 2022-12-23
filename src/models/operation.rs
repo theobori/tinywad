@@ -8,4 +8,6 @@ pub trait WadOperation {
     fn save(&self);
     /// Extract as file(s) in the directory `path`
     fn save_as<P: AsRef<Path>>(&self, path: P);
+    /// Remove then dump the WAD raw bytes
+    fn remove(&mut self);
 }

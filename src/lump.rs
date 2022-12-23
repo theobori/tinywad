@@ -4,8 +4,6 @@ pub enum LumpKind {
     Flat,
     Patch,
     Sound,
-    /// 0 bytes lump
-    ImageDelimiter,
     /// Unidentified lump
     Unknown
 }

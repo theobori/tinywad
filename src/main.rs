@@ -19,26 +19,26 @@ struct Opt {
     path: PathBuf,
     /// Match lumps name regex, matching everything by default
     #[structopt(long)]
-    re: Option<String>,
-    /// Operation <dump, save, save_as>, dump by default
+    regex: Option<String>,
+    /// Operation <dump, save, save_as, remove>, dump by default
     #[structopt(long)]
-    op: Option<WadOperationKind>,
+    operation: Option<WadOperationKind>,
     /// Optional output directory
     #[structopt(long)]
     dir: Option<String>,
     /// Custom palette index, 0 by default
     #[structopt(long)]
-    pal: Option<usize>,
+    palette: Option<usize>,
 }
 
 impl Opt {
     /// Get the regex string value
-    pub fn re(&self) -> Result<Regex, WadError> {
+    pub fn regex(&self) -> Result<Regex, WadError> {
         // Unwraping the optional CLI argument
-        let re_result = if self.re.is_none() {
+        let re_result = if self.regex.is_none() {
             Regex::new(DEFAULT_RE_NAME)
         } else {
-            let arg_value = &self.re.clone().unwrap();
+            let arg_value = &self.regex.clone().unwrap();
 
             Regex::from_str(arg_value)
         };
@@ -53,12 +53,12 @@ impl Opt {
 
     /// Get the operation
     pub fn op(&self) -> WadOperationKind {
-        self.op.unwrap_or_default()
+        self.operation.unwrap_or_default()
     }
 
     /// Get the palette index
     pub fn pal(&self) -> usize {
-        self.pal.unwrap_or(0)
+        self.palette.unwrap_or(0)
     }
 }
 
@@ -78,7 +78,7 @@ fn create_dirs(dirname: String) -> Result<(), WadError> {
 fn main() -> Result<(), WadError> {
     // Arguments
     let args = Opt::from_args();
-    let re = args.re()?;
+    let re = args.regex()?;
     let op = args.op();
 
     // WAD manager
@@ -98,7 +98,8 @@ fn main() -> Result<(), WadError> {
                 },
                 None => wad.save()
             }
-        }
+        },
+        WadOperationKind::Remove => wad.remove()
     };
 
     Ok(())

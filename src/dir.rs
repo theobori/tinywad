@@ -50,6 +50,13 @@ impl LumpsDirectory {
         }
     }
 
+    /// Remove matching index
+    pub fn remove_lumps(&mut self, re: Regex) {
+        for name in self.matches(re) {
+            self.lumps.remove(&name);
+        }
+    }
+
     /// Get the matching lump names
     pub fn matches(&self, re: Regex) -> Vec<String> {
         let mut ret = Vec::new();
