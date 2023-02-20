@@ -1,4 +1,4 @@
-# tinywayd
+# tinywad
 
 ## How to build and run ?
 
