@@ -2,13 +2,17 @@ use std::{
     fmt::{
         Display,
         Result
-    }, path::Path
+    },
+    path::Path,
+    rc::Rc,
+    cell::RefCell
 };
 
 use crate::{
     models::lump::Lump,
     lump::LumpInfo,
-    lumps::palette::Palettes
+    lumps::palette::Palettes,
+    save_raw
 };
 
 extern crate image;
@@ -28,18 +32,22 @@ pub struct Flat {
     /// Array used to store the DOOM image data before converting it into bitmap
     pixels: Vec<u8>,
     /// Attached palettes
-    palettes: Palettes
+    palettes: Palettes,
+    /// Raw file buffer
+    raw: Rc<RefCell<Vec<u8>>>
 }
 
 impl Flat {
     pub fn new(
         info: LumpInfo,
         palettes: Palettes,
+        raw: Rc<RefCell<Vec<u8>>>
     ) -> Self {
         Self {
             info,
             pixels: Vec::new(),
             palettes,
+            raw
         }
     }
 }
@@ -59,7 +67,8 @@ impl Display for Flat {
 }
 
 impl Lump for Flat {
-    fn parse(&mut self, buffer: &[u8]) {
+    fn parse(&mut self) {
+        let buffer = &self.raw.borrow_mut()[self.info.pos as usize..];
         let palette = self.palettes
             .palette()
             .unwrap();
@@ -75,7 +84,7 @@ impl Lump for Flat {
         }
     }        
 
-    fn save_as(&self, dir: &str) {
+    fn save(&self, dir: &str) {
         let path = format!(
             "{}/{}.png",
             dir,
@@ -90,4 +99,6 @@ impl Lump for Flat {
             image::ColorType::Rgba8
         ).unwrap();
     }
+
+    save_raw!();
 }

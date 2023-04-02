@@ -1,4 +1,9 @@
-use std::{collections::LinkedList, mem::size_of};
+use std::{
+    collections::LinkedList,
+    mem::size_of,
+    cell::RefCell,
+    rc::Rc
+};
 use lazy_static::lazy_static;
 use linked_hash_map::LinkedHashMap;
 use regex::Regex;
@@ -27,6 +32,8 @@ lazy_static! {
     /// Patch/Sprite end lump name
     static ref RE_S_END: Regex = Regex::new("S[0-9]+_END").unwrap();
 }
+
+const MAX_PAL: usize = 13;
 
 /// Representing the lumps directory data
 pub struct LumpsDirectory {
@@ -72,7 +79,7 @@ impl LumpsDirectory {
 
     /// Set the palette index
     pub fn set_palette(&mut self, value: usize) {
-        self.pal.set_n(value);
+        self.pal.set_n(value % MAX_PAL);
     }
 
     /// Update the marker, handling the 0 bytes lumps like flat/patch delimiters
@@ -96,20 +103,29 @@ impl LumpsDirectory {
         if RE_S_END.is_match(name) {
             marker.pop_back();
         }
+
+        // Add marker for music
     }
 
     /// Iterating over the directory and filling `self.lumps`
-    pub fn parse(&mut self, info: WadInfo, buffer: &Vec<u8>) {
+    pub fn parse(
+        &mut self,
+        info: WadInfo,
+        buffer: Rc<RefCell<Vec<u8>>>
+    ) {
         let size = size_of::<LumpInfo>();
         let mut marker: LinkedList<LumpKind> = LinkedList::new();
 
+        // Link the palette buffer
+        self.pal.set_raw(buffer.clone());
+
         for lump_num in 0..(info.num_lumps as usize) {
             let index = (info.dir_pos as usize) + (lump_num * size);
-            let lump_buffer = &buffer[index..index + size];
 
             // Get lump informations
-            let info = LumpInfo::from(lump_buffer);
-
+            let info = LumpInfo::from(
+                &buffer.borrow()[index..index + size]
+            );
             // Get the right lump
             let name = info.name_ascii();
 
@@ -117,7 +133,7 @@ impl LumpsDirectory {
                 "PLAYPAL" => {
                     self.pal.set_info(info);
                     // Special case that must be parsed before copied
-                    self.pal.parse(&buffer[(info.pos as usize)..]);
+                    self.pal.parse();
                     
                     Box::new(self.pal.clone())
                 },
@@ -160,12 +176,14 @@ impl LumpsDirectory {
                                 Box::new(DoomImage::new(
                                     info,
                                     self.pal.clone(),
+                                    buffer.clone()
                                 ))
                             },
                             LumpKind::Flat => {
                                 Box::new(Flat::new(
                                     info,
-                                    self.pal.clone()
+                                    self.pal.clone(),
+                                    buffer.clone()
                                 ))
                             },
                             _ => Box::new(Unknown { info })
@@ -177,7 +195,7 @@ impl LumpsDirectory {
             };
 
             // Fetch and decode data from the WAD buffer
-            lump.parse(&buffer[(info.pos as usize)..]);
+            lump.parse();
 
             // Add the lump to the hashmap
             self.lumps.insert(name, lump);

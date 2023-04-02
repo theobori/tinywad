@@ -2,11 +2,17 @@ use std::{
     fmt::{
         Display,
         Result
-    }, ops::Mul, path::Path, mem::size_of
+    },
+    ops::Mul,
+    path::Path,
+    mem::size_of,
+    cell::RefCell,
+    rc::Rc,
 };
 
 use crate::{
     models::lump::Lump,
+    models::lump::save_raw,
     lump::LumpInfo,
     lumps::palette::Palettes
 };
@@ -76,18 +82,21 @@ pub struct DoomImage {
     pixels: Vec<Option<u8>>,
     /// Attached palettes
     palettes: Palettes,
+    /// Raw file buffer
+    raw: Rc<RefCell<Vec<u8>>>
 }
-
 impl DoomImage {
     pub fn new(
         info: LumpInfo,
         palettes: Palettes,
+        raw: Rc<RefCell<Vec<u8>>>
     ) -> Self {
         Self {
             info,
             img_info: DoomImageInfo::default(),
             pixels: Vec::new(),
             palettes,
+            raw
         }
     }
 
@@ -133,7 +142,8 @@ impl Display for DoomImage {
 }
 
 impl Lump for DoomImage {
-    fn parse(&mut self, buffer: &[u8]) {
+    fn parse(&mut self) {
+        let buffer = &self.raw.borrow_mut()[self.info.pos as usize..];
         self.img_info = DoomImageInfo::from(buffer);
 
         let img_size = self.img_info.width.mul(self.img_info.height) as usize;
@@ -176,7 +186,8 @@ impl Lump for DoomImage {
                 pos += 2;
 
                 for j in 0..pixel_count as usize {
-                    let index = (((row_start as usize) + j) * self.img_info.width as usize) + i;
+                    let index = (((row_start as usize) + j) *
+                        self.img_info.width as usize) + i;
                     self.pixels[index] = Some(buffer[pos]);
                     pos += 1;
                 }
@@ -186,7 +197,7 @@ impl Lump for DoomImage {
         }
     }        
 
-    fn save_as(&self, dir: &str) {
+    fn save(&self, dir: &str) {
         let path = format!(
             "{}/{}.png",
             dir,
@@ -201,4 +212,6 @@ impl Lump for DoomImage {
             image::ColorType::Rgba8
         ).unwrap();
     }
+
+    save_raw!();
 }

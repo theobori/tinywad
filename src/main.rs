@@ -8,7 +8,8 @@ use tinywad::error::WadError;
 use tinywad::models::operation::WadOperation;
 use tinywad::wad::{
     Wad,
-    DEFAULT_RE_NAME, WadOperationKind
+    DEFAULT_RE_NAME,
+    WadOperationKind
 };
 
 #[derive(StructOpt, Debug)]
@@ -33,12 +34,14 @@ struct Opt {
 
 impl Opt {
     /// Get the regex string value
-    pub fn regex(&self) -> Result<Regex, WadError> {
+    pub fn regex_obj(&self) -> Result<Regex, WadError> {
         // Unwraping the optional CLI argument
         let re_result = if self.regex.is_none() {
             Regex::new(DEFAULT_RE_NAME)
         } else {
-            let arg_value = &self.regex.clone().unwrap();
+            let arg_value = &self.regex
+                .clone()
+                .unwrap();
 
             Regex::from_str(arg_value)
         };
@@ -75,32 +78,50 @@ fn create_dirs(dirname: String) -> Result<(), WadError> {
     Ok(())
 }
 
+// fn main() -> Result<(), WadError> {
+//     // Arguments
+//     let args = Opt::from_args();
+//     let op = args.op();
+
+//     // WAD manager
+//     let mut wad = Wad::new();
+
+//     wad.set_re_name("^FLOOR*");
+//     wad.set_palette(args.pal());
+//     wad.load_from_file(args.path)?;
+
+//     match op {
+//         WadOperationKind::Dump => wad.dump(),
+//         WadOperationKind::Save => wad.save(),
+//         WadOperationKind::SaveAs => {
+//             match args.dir {
+//                 Some(dirname) => {
+//                     create_dirs(dirname.clone())?;
+//                     wad.save_as(dirname);
+//                 },
+//                 None => wad.save()
+//             }
+//         }
+//     };
+
+//     Ok(())
+// }
+
 fn main() -> Result<(), WadError> {
-    // Arguments
-    let args = Opt::from_args();
-    let re = args.regex()?;
-    let op = args.op();
+    let mut wad = Wad::new();
 
-    // WAD manager
-    let mut wad = Wad::new(re);
+    // wad.set_re_name("^FLOOR*");
+    wad.set_palette(0);
+    wad.load_from_file("wads/doom1.wad")?;
 
-    wad.set_palette(args.pal());
-    wad.load_from_file(args.path)?;
+    wad.save_raw("./tmp");
 
-    match op {
-        WadOperationKind::Dump => wad.dump(),
-        WadOperationKind::Save => wad.save(),
-        WadOperationKind::SaveAs => {
-            match args.dir {
-                Some(dirname) => {
-                    create_dirs(dirname.clone())?;
-                    wad.save_as(dirname);
-                },
-                None => wad.save()
-            }
-        },
-        WadOperationKind::Remove => wad.remove()
-    };
+    // let contents = wad.buffer.borrow().clone();
+
+    // fs::write(
+    //     "test.raw",
+    //     contents
+    // );
 
     Ok(())
 }

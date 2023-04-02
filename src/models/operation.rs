@@ -4,10 +4,8 @@ use std::path::Path;
 pub trait WadOperation {
     /// Dump
     fn dump(&self);
-    /// Extract as file(s)
-    fn save(&self);
-    /// Extract as file(s) in the directory `path`
-    fn save_as<P: AsRef<Path>>(&self, path: P);
-    /// Remove then dump the WAD raw bytes
-    fn remove(&mut self);
+    /// Extract as file(s) in the directory `dir`
+    fn save<P: AsRef<Path>>(&self, dir: P);
+    /// Extract the raw content in the directory `dir`
+    fn save_raw<P: AsRef<Path>>(&self, dir: P);
 }

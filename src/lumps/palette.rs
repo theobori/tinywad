@@ -1,12 +1,13 @@
 use std::{fmt::{
     Display,
     Result
-}, path::Path};
+}, path::Path, cell::RefCell, rc::Rc};
 
 use crate::{
     models::lump::Lump,
     lump::LumpInfo,
-    properties::color::ColorRgb
+    properties::color::ColorRgb,
+    save_raw
 };
 
 extern crate image;
@@ -27,7 +28,9 @@ pub struct Palettes {
     /// Data a.k.a the palettes (array of 768 bytes -> 256 * 3)
     pub palettes: Vec<Palette>,
     /// Get the `n` palette
-    n: usize
+    n: usize,
+    /// Raw file buffer
+    raw: Rc<RefCell<Vec<u8>>>
 }
 
 impl Default for Palettes {
@@ -35,12 +38,22 @@ impl Default for Palettes {
         Self {
             info: LumpInfo::default(),
             palettes: Vec::new(),
-            n: 0
+            n: 0,
+            raw: Rc::new(RefCell::new(Vec::new()))
         }
     }
 }
 
 impl Palettes {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Exceptionalm method to set `self.raw` after calling the constructor
+    pub fn set_raw(&mut self, raw: Rc<RefCell<Vec<u8>>>) {
+        self.raw = raw;
+    }
+
     /// Get the palettes
     pub fn palettes(&self) -> Vec<Palette> {
         self.palettes.clone()
@@ -100,7 +113,8 @@ impl Display for Palettes {
 }
 
 impl Lump for Palettes {
-    fn parse(&mut self, buffer: &[u8]) {
+    fn parse(&mut self) {
+        let buffer = &self.raw.borrow_mut()[self.info.pos as usize..];
         // Reset the vector if the method is called multiple time by mistake
         self.palettes.clear();
 
@@ -119,12 +133,12 @@ impl Lump for Palettes {
                     )
                 ));
             }
-    
+
             self.palettes.push(palette);
         }
     }
 
-    fn save_as(&self, dir: &str) {
+    fn save(&self, dir: &str) {
         // Extract every palette as a single file
         for pal_index in 0..self.palettes.len() {
             let path = format!(
@@ -145,4 +159,6 @@ impl Lump for Palettes {
         }
         
     }
+
+    save_raw!();
 }

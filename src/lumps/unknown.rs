@@ -27,11 +27,15 @@ impl Display for Unknown {
 }
 
 impl Lump for Unknown {
-    fn parse(&mut self, _buffer: &[u8]) {
+    fn parse(&mut self) {
 
     }
 
-    fn save_as(&self, _dir: &str) {
+    fn save(&self, _dir: &str) {
     
+    }
+
+    fn save_raw(&self, _dir: &str) {
+        
     }
 }

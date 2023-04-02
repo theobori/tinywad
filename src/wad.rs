@@ -2,7 +2,9 @@ use std::{
     path::Path,
     fs::File,
     io::Read,
-   str::FromStr
+   str::FromStr,
+   cell::RefCell,
+   rc::Rc
 };
 
 use linked_hash_map::LinkedHashMap;
@@ -41,7 +43,6 @@ pub enum WadOperationKind {
     Dump,
     Save,
     SaveAs,
-    Remove
 }
 
 impl Default for WadOperationKind{
@@ -58,7 +59,6 @@ impl FromStr for WadOperationKind {
             "dump" => Self::Dump,
             "save" => Self::Save,
             "save_as" => Self::SaveAs,
-            "remove" => Self::Remove,
             _ => return Err(WadError::InvalidOperation)
         };
 
@@ -110,7 +110,7 @@ pub struct Wad {
     /// File type (IWAD or PWAD)
     info: WadInfo,
     /// Buffer a.k.a file content
-    buffer: Vec<u8>,
+    pub buffer: Rc<RefCell<Vec<u8>>>,
     /// Filter (regex)
     re_name: Regex,
     /// Lumps directory
@@ -118,11 +118,15 @@ pub struct Wad {
 }
 
 impl Wad {
-    pub fn new(re_name: Regex) -> Self {
+    pub fn new() -> Self {
         Self {
             info: WadInfo::default(),
-            buffer: Vec::new(),
-            re_name,
+            buffer: Rc::new(
+                RefCell::new(
+                    Vec::new()
+                )
+            ),
+            re_name: Regex::new(DEFAULT_RE_NAME).unwrap(),
             dir: LumpsDirectory {
                 lumps: LinkedHashMap::new(),
                 pal: Palettes::default()
@@ -135,22 +139,38 @@ impl Wad {
         self.dir.set_palette(value);
     }
 
+    /// Set `self.re_name`
+    pub fn set_re_name(&mut self, value: &str) {
+        let regex = Regex::new(value);
+
+        self.re_name = match regex {
+            Ok(r) => r,
+            Err(_) => Regex::new(DEFAULT_RE_NAME).unwrap(),
+        }
+    }
+
     /// Parse a buffer into lumps entries
     pub fn load<T: Into<Vec<u8>>>(
         &mut self,
         buffer: T
     ) -> Result<(), WadError> {
-        self.buffer = buffer.into();
+        let buffer = buffer.into();
 
         // WAD informations
-        if self.buffer.len() < 12 {
+        // Check if the WAD is valid
+        if buffer.len() < 12 {
             return Err(WadError::Load(
                 "The file size is too small."
             ))
         }
 
-        // Check if the WAD is valid
-        self.info = WadInfo::from(&self.buffer[0..12]);
+        self.buffer = Rc::new(
+            RefCell::new(
+                buffer
+            )
+        );
+
+        self.info = WadInfo::from(&self.buffer.borrow()[0..12]);
 
         if self.info.kind == WadKind::Unknown {
             return Err(WadError::Type(
@@ -159,7 +179,10 @@ impl Wad {
         }
 
         // Parse lumps
-        self.dir.parse(self.info, &self.buffer);
+        self.dir.parse(
+            self.info,
+            self.buffer.clone()
+        );
 
         Ok(())
     }
@@ -194,23 +217,21 @@ impl WadOperation for Wad {
         );
     }
 
-    fn save(&self) {
-        self.dir.callback_lumps(
-            self.re_name.clone(),
-            | lump | lump.save()
-        );
-    }
-
-    fn save_as<P: AsRef<Path>>(&self, dir: P) {
+    fn save<P: AsRef<Path>>(&self, dir: P) {
         let dir = dir.as_ref().to_str().unwrap();
 
         self.dir.callback_lumps(
             self.re_name.clone(),
-            | lump | lump.save_as(dir)
+            | lump | lump.save(dir)
         );
     }
 
-    fn remove(&mut self) {
-        self.info.num_lumps -= 1;
+    fn save_raw<P: AsRef<Path>>(&self, dir: P) {
+        let dir = dir.as_ref().to_str().unwrap();
+
+        self.dir.callback_lumps(
+            self.re_name.clone(),
+            | lump | lump.save_raw(dir)
+        );
     }
 }
