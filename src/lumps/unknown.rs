@@ -5,13 +5,13 @@ use std::fmt::{
 
 use crate::{
     models::lump::Lump,
-    lump::LumpInfo
+    lump::{LumpInfo, LumpData}
 };
 
 /// Just an unknown or unimplemented lump
 pub struct Unknown {
-    /// Lump metadata
-    pub info: LumpInfo,
+    /// Lump data
+    pub data: LumpData,
 }
 
 impl Display for Unknown {
@@ -19,9 +19,9 @@ impl Display for Unknown {
         write!(
             f,
             "Name: {}, Size: {}, Offset: {}",
-            self.info.name_ascii(),
-            self.info.size,
-            self.info.pos
+            self.data.metadata.name_ascii(),
+            self.data.metadata.size,
+            self.data.metadata.pos
         )
     }
 }
@@ -35,7 +35,7 @@ impl Lump for Unknown {
     
     }
 
-    fn save_raw(&self, _dir: &str) {
-        
+    fn data(&self) -> crate::lump::LumpData {
+        self.data.clone()
     }
 }

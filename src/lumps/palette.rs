@@ -1,13 +1,12 @@
 use std::{fmt::{
     Display,
     Result
-}, path::Path, cell::RefCell, rc::Rc};
+}, path::Path};
 
 use crate::{
     models::lump::Lump,
-    lump::LumpInfo,
-    properties::color::ColorRgb,
-    save_raw
+    lump::{LumpInfo, LumpData},
+    properties::color::ColorRgb
 };
 
 extern crate image;
@@ -23,23 +22,20 @@ pub type Palette = Vec<ColorRgb>;
 /// PLAYPAL
 #[derive(Clone)]
 pub struct Palettes {
-    /// Lump metadata
-    pub info: LumpInfo,
     /// Data a.k.a the palettes (array of 768 bytes -> 256 * 3)
     pub palettes: Vec<Palette>,
     /// Get the `n` palette
     n: usize,
     /// Raw file buffer
-    raw: Rc<RefCell<Vec<u8>>>
+    data: LumpData
 }
 
 impl Default for Palettes {
     fn default() -> Self {
         Self {
-            info: LumpInfo::default(),
             palettes: Vec::new(),
             n: 0,
-            raw: Rc::new(RefCell::new(Vec::new()))
+            data: LumpData::default()
         }
     }
 }
@@ -47,11 +43,6 @@ impl Default for Palettes {
 impl Palettes {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Exceptionalm method to set `self.raw` after calling the constructor
-    pub fn set_raw(&mut self, raw: Rc<RefCell<Vec<u8>>>) {
-        self.raw = raw;
     }
 
     /// Get the palettes
@@ -86,27 +77,27 @@ impl Palettes {
         ret            
     }
 
+    /// Set the lump data
+    pub fn set_data(&mut self, data: LumpData) {
+        self.data = data;
+    }
+
     /// Set the `n` property
     pub fn set_n(&mut self, value: usize) {
         self.n = value;
-    }
-
-    /// Set the lump metadatas
-    pub fn set_info(&mut self, info: LumpInfo) {
-        self.info = info;
     }
 }
 
 impl Display for Palettes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
-        let amount = self.info.size as usize / PALETTE_SIZE;
+        let amount = self.data.metadata.size as usize / PALETTE_SIZE;
 
         write!(
             f,
             "Name: {}, Size: {}, Offset: {}, Palettes amount: {}",
-            self.info.name_ascii(),
-            self.info.size,
-            self.info.pos,
+            self.data.metadata.name_ascii(),
+            self.data.metadata.size,
+            self.data.metadata.pos,
             amount
         )
     }
@@ -114,11 +105,11 @@ impl Display for Palettes {
 
 impl Lump for Palettes {
     fn parse(&mut self) {
-        let buffer = &self.raw.borrow_mut()[self.info.pos as usize..];
+        let buffer = &*self.data.buffer;
         // Reset the vector if the method is called multiple time by mistake
         self.palettes.clear();
 
-        for i in (0..self.info.size as usize).step_by(PALETTE_SIZE) {
+        for i in (0..self.data.metadata.size as usize).step_by(PALETTE_SIZE) {
             let mut palette = Vec::new();
 
             for pixel_pos in (0..PALETTE_SIZE).step_by(PIXEL_SIZE) {
@@ -154,11 +145,11 @@ impl Lump for Palettes {
                 16,
                 16,
                 image::ColorType::Rgba8
-            ).unwrap();
-            
+            ).unwrap();   
         }
-        
     }
 
-    save_raw!();
+    fn data(&self) -> crate::lump::LumpData {
+        self.data.clone()
+    }
 }

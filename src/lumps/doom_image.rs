@@ -12,8 +12,7 @@ use std::{
 
 use crate::{
     models::lump::Lump,
-    models::lump::save_raw,
-    lump::LumpInfo,
+    lump::{LumpInfo, LumpData},
     lumps::palette::Palettes
 };
 
@@ -74,29 +73,26 @@ impl From<&[u8]> for DoomImageInfo {
 /// Represents a DOOM picture
 #[derive(Clone)]
 pub struct DoomImage {
-    /// Lump metadata
-    pub info: LumpInfo,
     /// Picture metadata
     pub img_info: DoomImageInfo,
     /// Array used to store the DOOM image data before converting it into bitmap
     pixels: Vec<Option<u8>>,
     /// Attached palettes
     palettes: Palettes,
-    /// Raw file buffer
-    raw: Rc<RefCell<Vec<u8>>>
+    /// Lump data
+    data: LumpData
 }
+
 impl DoomImage {
     pub fn new(
-        info: LumpInfo,
         palettes: Palettes,
-        raw: Rc<RefCell<Vec<u8>>>
+        data: LumpData
     ) -> Self {
         Self {
-            info,
             img_info: DoomImageInfo::default(),
             pixels: Vec::new(),
             palettes,
-            raw
+            data
         }
     }
 
@@ -132,9 +128,9 @@ impl Display for DoomImage {
         write!(
             f,
             "Name: {}, Size: {}, Offset: {}, Width: {}, Height: {}",
-            self.info.name_ascii(),
-            self.info.size,
-            self.info.pos,
+            self.data.metadata.name_ascii(),
+            self.data.metadata.size,
+            self.data.metadata.pos,
             self.img_info.width,
             self.img_info.height
         )
@@ -143,7 +139,7 @@ impl Display for DoomImage {
 
 impl Lump for DoomImage {
     fn parse(&mut self) {
-        let buffer = &self.raw.borrow_mut()[self.info.pos as usize..];
+        let buffer = &*self.data.buffer;
         self.img_info = DoomImageInfo::from(buffer);
 
         let img_size = self.img_info.width.mul(self.img_info.height) as usize;
@@ -201,7 +197,7 @@ impl Lump for DoomImage {
         let path = format!(
             "{}/{}.png",
             dir,
-            self.info.name_ascii()
+            self.data.metadata.name_ascii()
         );
 
         image::save_buffer(
@@ -213,5 +209,7 @@ impl Lump for DoomImage {
         ).unwrap();
     }
 
-    save_raw!();
+    fn data(&self) -> LumpData {
+        self.data.clone()
+    }
 }

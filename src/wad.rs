@@ -110,7 +110,7 @@ pub struct Wad {
     /// File type (IWAD or PWAD)
     info: WadInfo,
     /// Buffer a.k.a file content
-    pub buffer: Rc<RefCell<Vec<u8>>>,
+    buffer: Vec<u8>,
     /// Filter (regex)
     re_name: Regex,
     /// Lumps directory
@@ -121,11 +121,7 @@ impl Wad {
     pub fn new() -> Self {
         Self {
             info: WadInfo::default(),
-            buffer: Rc::new(
-                RefCell::new(
-                    Vec::new()
-                )
-            ),
+            buffer: Vec::new(),
             re_name: Regex::new(DEFAULT_RE_NAME).unwrap(),
             dir: LumpsDirectory {
                 lumps: LinkedHashMap::new(),
@@ -164,13 +160,8 @@ impl Wad {
             ))
         }
 
-        self.buffer = Rc::new(
-            RefCell::new(
-                buffer
-            )
-        );
-
-        self.info = WadInfo::from(&self.buffer.borrow()[0..12]);
+        self.info = WadInfo::from(&buffer[0..12]);
+        self.buffer = buffer;
 
         if self.info.kind == WadKind::Unknown {
             return Err(WadError::Type(
@@ -181,7 +172,7 @@ impl Wad {
         // Parse lumps
         self.dir.parse(
             self.info,
-            self.buffer.clone()
+            &self.buffer
         );
 
         Ok(())
@@ -227,11 +218,11 @@ impl WadOperation for Wad {
     }
 
     fn save_raw<P: AsRef<Path>>(&self, dir: P) {
-        let dir = dir.as_ref().to_str().unwrap();
+        // let dir = dir.as_ref().to_str().unwrap();
 
-        self.dir.callback_lumps(
-            self.re_name.clone(),
-            | lump | lump.save_raw(dir)
-        );
+        // self.dir.callback_lumps(
+        //     self.re_name.clone(),
+        //     | lump | lump.save_raw(dir)
+        // );
     }
 }

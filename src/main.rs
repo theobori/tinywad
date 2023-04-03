@@ -21,7 +21,7 @@ struct Opt {
     /// Match lumps name regex, matching everything by default
     #[structopt(long)]
     regex: Option<String>,
-    /// Operation <dump, save, save_as, remove>, dump by default
+    /// Operation <dump, save, save_as>, dump by default
     #[structopt(long)]
     operation: Option<WadOperationKind>,
     /// Optional output directory
@@ -114,7 +114,7 @@ fn main() -> Result<(), WadError> {
     wad.set_palette(0);
     wad.load_from_file("wads/doom1.wad")?;
 
-    wad.save_raw("./tmp");
+    wad.save("./tmp");
 
     // let contents = wad.buffer.borrow().clone();
 

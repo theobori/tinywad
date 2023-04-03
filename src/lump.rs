@@ -2,8 +2,9 @@
 #[derive(Clone, PartialEq, Copy)]
 pub enum LumpKind {
     Flat,
-    Patch,
     Sound,
+    Patch,
+    Palette,
     /// Unidentified lump
     Unknown
 }
@@ -70,5 +71,46 @@ impl From<&[u8]> for LumpInfo {
                 .try_into()
                 .unwrap_or_default(),
         }
+    }
+}
+
+/// Representing the whole lump buffer as a struct
+#[derive(Clone)]
+pub struct LumpData {
+    /// The raw buffer
+    pub buffer: Vec<u8>,
+    /// The lump metadata (16 bytes header)
+    pub metadata: LumpInfo,
+    /// The lump kind
+    pub kind: LumpKind
+}
+
+impl Default for LumpData {
+    fn default() -> Self {
+        Self {
+            buffer: Default::default(),
+            metadata: Default::default(),
+            kind: LumpKind::Unknown
+        }
+    }
+}
+
+impl Into<Vec<u8>> for LumpData {
+    fn into(self) -> Vec<u8> {
+        let mut ret = self.buffer;
+
+        ret.append(
+            &mut self.metadata.pos
+                .to_be_bytes()
+                .to_vec()
+        );
+        ret.append(
+            &mut self.metadata.size
+                .to_be_bytes()
+                .to_vec()
+        );
+        ret.append(&mut self.metadata.name.to_vec());
+
+        ret
     }
 }

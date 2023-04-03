@@ -4,15 +4,12 @@ use std::{
         Result
     },
     path::Path,
-    rc::Rc,
-    cell::RefCell
 };
 
 use crate::{
     models::lump::Lump,
-    lump::LumpInfo,
+    lump::{LumpInfo, LumpData},
     lumps::palette::Palettes,
-    save_raw
 };
 
 extern crate image;
@@ -27,27 +24,23 @@ pub const FLAT_SIZE: usize = FLAT_W * FLAT_H;
 /// Represents a Flat
 #[derive(Clone)]
 pub struct Flat {
-    /// Lump metadata
-    pub info: LumpInfo,
     /// Array used to store the DOOM image data before converting it into bitmap
     pixels: Vec<u8>,
     /// Attached palettes
     palettes: Palettes,
-    /// Raw file buffer
-    raw: Rc<RefCell<Vec<u8>>>
+    /// Lump data
+    data: LumpData
 }
 
 impl Flat {
     pub fn new(
-        info: LumpInfo,
         palettes: Palettes,
-        raw: Rc<RefCell<Vec<u8>>>
+        data: LumpData
     ) -> Self {
         Self {
-            info,
             pixels: Vec::new(),
             palettes,
-            raw
+            data
         }
     }
 }
@@ -57,9 +50,9 @@ impl Display for Flat {
         write!(
             f,
             "Name: {}, Size: {}, Offset: {}, Width: {}, Height: {}",
-            self.info.name_ascii(),
-            self.info.size,
-            self.info.pos,
+            self.data.metadata.name_ascii(),
+            self.data.metadata.size,
+            self.data.metadata.pos,
             FLAT_W,
             FLAT_H
         )
@@ -68,7 +61,7 @@ impl Display for Flat {
 
 impl Lump for Flat {
     fn parse(&mut self) {
-        let buffer = &self.raw.borrow_mut()[self.info.pos as usize..];
+        let buffer = &*self.data.buffer;
         let palette = self.palettes
             .palette()
             .unwrap();
@@ -88,7 +81,7 @@ impl Lump for Flat {
         let path = format!(
             "{}/{}.png",
             dir,
-            self.info.name_ascii()
+            self.data.metadata.name_ascii()
         );
 
         image::save_buffer(
@@ -100,5 +93,7 @@ impl Lump for Flat {
         ).unwrap();
     }
 
-    save_raw!();
+    fn data(&self) -> LumpData {
+        self.data.clone()
+    }
 }

@@ -1,8 +1,6 @@
 use std::{
     collections::LinkedList,
     mem::size_of,
-    cell::RefCell,
-    rc::Rc
 };
 use lazy_static::lazy_static;
 use linked_hash_map::LinkedHashMap;
@@ -12,7 +10,8 @@ use crate::{
     models::lump::Lump,
     lump::{
         LumpKind,
-        LumpInfo
+        LumpInfo,
+        LumpData
     },
     lumps::{
         doom_image::DoomImage,
@@ -108,30 +107,32 @@ impl LumpsDirectory {
     }
 
     /// Iterating over the directory and filling `self.lumps`
-    pub fn parse(
-        &mut self,
-        info: WadInfo,
-        buffer: Rc<RefCell<Vec<u8>>>
-    ) {
+    pub fn parse(&mut self, info: WadInfo, buffer: &Vec<u8>) {
         let size = size_of::<LumpInfo>();
         let mut marker: LinkedList<LumpKind> = LinkedList::new();
-
-        // Link the palette buffer
-        self.pal.set_raw(buffer.clone());
 
         for lump_num in 0..(info.num_lumps as usize) {
             let index = (info.dir_pos as usize) + (lump_num * size);
 
-            // Get lump informations
+            // Get lump informations then data
             let info = LumpInfo::from(
-                &buffer.borrow()[index..index + size]
+                &buffer[index..index + size]
             );
+            let pos = info.pos as usize;
+            let size = info.size as usize;
+            let mut data = LumpData {
+                buffer: buffer[pos..pos + size].to_vec(),
+                metadata: info,
+                kind: LumpKind::Unknown,
+            };
             // Get the right lump
             let name = info.name_ascii();
 
             let mut lump: Box<dyn Lump> = match &*name {
                 "PLAYPAL" => {
-                    self.pal.set_info(info);
+                    data.kind = LumpKind::Palette;
+                    
+                    self.pal.set_data(data);
                     // Special case that must be parsed before copied
                     self.pal.parse();
                     
@@ -141,25 +142,25 @@ impl LumpsDirectory {
                 "F_START" => {
                     marker.push_back(LumpKind::Flat);
 
-                    Box::new(Unknown { info })
+                    Box::new(Unknown { data })
                 },
 
                 "F_END" => {
                     marker.pop_back();
-
-                    Box::new(Unknown { info })
+                    
+                    Box::new(Unknown { data })
                 },
 
                 "S_START" | "SS_START" => {
                     marker.push_back(LumpKind::Patch);
 
-                    Box::new(Unknown { info })
+                    Box::new(Unknown { data })
                 },
 
                 "S_END" | "SS_END" => {
                     marker.pop_back();
 
-                    Box::new(Unknown { info })
+                    Box::new(Unknown { data })
                 },
 
                 _ => {
@@ -173,23 +174,24 @@ impl LumpsDirectory {
                             LumpKind::Patch => {
                                 // Match the engine (DOOM, HEXEN, etc...)
                                 // Only intended for the DOOM engine right now
+                                data.kind = LumpKind::Patch;
+
                                 Box::new(DoomImage::new(
-                                    info,
                                     self.pal.clone(),
-                                    buffer.clone()
+                                    data
                                 ))
                             },
                             LumpKind::Flat => {
+                                data.kind = LumpKind::Flat;
                                 Box::new(Flat::new(
-                                    info,
                                     self.pal.clone(),
-                                    buffer.clone()
+                                    data
                                 ))
                             },
-                            _ => Box::new(Unknown { info })
+                            _ => Box::new(Unknown { data })
                         }
                     } else {
-                        Box::new(Unknown { info })
+                        Box::new(Unknown { data })
                     }
                 }
             };
