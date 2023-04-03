@@ -17,3 +17,6 @@ Cargo.lock
 
 *.wad
 main.rs
+
+# Testing extractions
+tmp/

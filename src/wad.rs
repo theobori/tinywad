@@ -1,6 +1,6 @@
 use std::{
     path::Path,
-    fs::File,
+    fs::{File, self},
     io::Read,
    str::FromStr,
    cell::RefCell,
@@ -218,11 +218,24 @@ impl WadOperation for Wad {
     }
 
     fn save_raw<P: AsRef<Path>>(&self, dir: P) {
-        // let dir = dir.as_ref().to_str().unwrap();
-
-        // self.dir.callback_lumps(
-        //     self.re_name.clone(),
-        //     | lump | lump.save_raw(dir)
-        // );
+        let dir = dir.as_ref().to_str().unwrap();
+        
+        
+        self.dir.callback_lumps(
+            self.re_name.clone(),
+            | lump | {
+                let data = lump.data();
+                let path = format!(
+                    "{}/{}.raw",
+                    dir,
+                    data.metadata.name_ascii()
+                );
+                
+                fs::write(
+                    path,
+                    data.buffer
+                ).unwrap_or_default();
+            }
+        );
     }
 }
