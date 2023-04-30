@@ -1,6 +1,6 @@
 # 🩸 tinywad
 
-A tiny tool to make some WAD extraction like images, sounds, etc..
+A tiny lib to manage WAD file like DOOM
 
 ## 📖 How to build and run ?
 
