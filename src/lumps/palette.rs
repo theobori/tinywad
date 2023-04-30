@@ -5,7 +5,7 @@ use std::{fmt::{
 
 use crate::{
     models::lump::Lump,
-    lump::{LumpInfo, LumpData},
+    lump::LumpData,
     properties::color::ColorRgb
 };
 
@@ -151,5 +151,13 @@ impl Lump for Palettes {
 
     fn data(&self) -> crate::lump::LumpData {
         self.data.clone()
+    }
+
+    fn set_data(&mut self, data: LumpData) {
+        self.data = data;
+    }
+
+    fn update(&mut self, _buffer: &Vec<u8>) {
+        todo!()
     }
 }

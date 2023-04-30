@@ -6,13 +6,11 @@ use std::{
     ops::Mul,
     path::Path,
     mem::size_of,
-    cell::RefCell,
-    rc::Rc,
 };
 
 use crate::{
     models::lump::Lump,
-    lump::{LumpInfo, LumpData},
+    lump::LumpData,
     lumps::palette::Palettes
 };
 
@@ -211,5 +209,13 @@ impl Lump for DoomImage {
 
     fn data(&self) -> LumpData {
         self.data.clone()
+    }
+
+    fn set_data(&mut self, data: LumpData) {
+        self.data = data;
+    }
+
+    fn update(&mut self, _buffer: &Vec<u8>) {
+        todo!()
     }
 }

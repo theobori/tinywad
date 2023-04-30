@@ -7,21 +7,18 @@ A tiny tool to make some WAD extraction like images, sounds, etc..
 1. Install the dependencies
     - `cargo`
 
-## 📖 Usage example
+## ℹ️ Usage example
 
 ```rust
 fn main() -> Result<(), WadError> {
     let mut wad = Wad::new();
 
-    // Setup the manager
-    wad.set_re_name("^FLOOR*");
     wad.set_palette(0);
-
-    // Load a wad file
     wad.load_from_file("wads/doom1.wad")?;
-    
-    // Then save every `FLOOR` lumps as files
-    wad.save(".");
+    wad.remove_by_name("^WILV*").unwrap();
+    wad.save_lumps("./tmp");
+    wad.save_lumps_raw("./tmp");
+    wad.save("test.wad");
 
     Ok(())
 }
@@ -41,9 +38,16 @@ Name           | Status
 Dump WAD header | ✅
 Dump lumps metadata | ✅
 Extract (save) lump | ✅
-Update lump | ⚠️
+Update raw lump | ✅
+Update lump | ❌
+Rebuild then save the WAD as a new file | ✅
 Extract sounds | ⚠️
 Extract raw lump | ✅
+Fix lumps linked hashmap | ✅
+Add lump unique coherent IDs | ✅
+Update lump size in the metadatas | ✅
+Include remove for other operations than save WAD file | ❌
+Include update into the WAD build process | ❌
 
 ## ℹ️ Documentation
 
