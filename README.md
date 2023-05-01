@@ -7,6 +7,18 @@ A tiny lib to manage WAD file like DOOM
 1. Install the dependencies
     - `cargo`
 
+## 💽 Compatibility
+
+Official games status:
+
+- `DOOM1.wad` 
+- `DOOM2.wad` 
+- `HEXEN.wad` 
+
+Mods/unofficial games:
+
+- `DBP37_AUGZEN.wad`
+
 ## ℹ️ Usage example
 
 ```rust
@@ -33,7 +45,7 @@ fn main() -> Result<(), WadError> {
 
 ## ✅ Todo
 
-Name           | Status
+Name           | State
 -------------  | :-------------:
 Dump WAD header | ✅
 Dump lumps metadata | ✅
@@ -47,7 +59,7 @@ Fix lumps linked hashmap | ✅
 Add lump unique coherent IDs | ✅
 Update lump size in the metadatas | ✅
 Include remove for other operations than save WAD file | ❌
-Include update into the WAD build process | ❌
+Include static update into the WAD build process | ❌
 
 ## ℹ️ Documentation
 

@@ -160,14 +160,14 @@ impl LumpsDirectory {
 
         for lump_num in 0..(info.num_lumps as usize) {
             let index = (info.dir_pos as usize) + (lump_num * 16);
-
+            
             // Get lump informations then data
             let mut metadata = LumpInfo::from(
                 &buffer[index..index + 16]
             );
             let pos = metadata.pos as usize;
             let size = metadata.size as usize;
-
+            
             // Represents the lump type/name
             let name = metadata.name_ascii();
 
@@ -189,6 +189,7 @@ impl LumpsDirectory {
                     .clone()
                 }
             };
+
 
             for (i, byte) in id.as_bytes().iter().enumerate() {
                 metadata.id[i] = *byte;
