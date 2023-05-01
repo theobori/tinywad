@@ -58,7 +58,6 @@ Extract raw lump | ✅
 Fix lumps linked hashmap | ✅
 Add lump unique coherent IDs | ✅
 Update lump size in the metadatas | ✅
-Include remove for other operations than save WAD file | ❌
 Include static update into the WAD build process | ❌
 
 ## ℹ️ Documentation
