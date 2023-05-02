@@ -119,8 +119,18 @@ impl From<&[u8]> for WadInfo {
     }
 }
 
+impl Into<Vec<u8>> for WadInfo {
+    fn into(self) -> Vec<u8> {
+        let mut ret = Vec::new();
+
+        ret.append(&mut self.kind.into());
+        ret.append(&mut i32::to_le_bytes(self.num_lumps).to_vec());
+        ret.append(&mut i32::to_le_bytes(self.dir_pos).to_vec());
+
+        ret
+    }
+}
 /// WAD controller, it includes features like extract, dump, etc..
-#[derive(Clone)]
 pub struct Wad {
     /// File type (IWAD or PWAD)
     info: WadInfo,
@@ -148,6 +158,11 @@ impl Wad {
     /// Set a palette that will be applied on every lump
     pub fn set_palette(&mut self, value: usize) {
         self.dir.set_palette(value);
+    }
+
+    /// Set the WAD kind (IWAD/PWAD/UNKOWN)
+    pub fn set_kind(&mut self, value: WadKind) {
+        self.info.kind = value;
     }
 
     /// Set `self.re_name`
@@ -215,7 +230,6 @@ impl Wad {
         let mut output = WadOutput::new(
             self.info,
             &self.dir,
-            &self.src
         );
 
         output.build();
@@ -262,13 +276,17 @@ impl WadOp for Wad {
     }
 
     fn remove_by_name(&mut self, re: &str) -> Result<(), Error> {
-        self.dir.remove_lumps(Regex::new(re)?);
+        let removed = self.dir.remove_lumps(Regex::new(re)?);
+        
+        self.info.num_lumps -= removed as i32;
 
         Ok(())
     }
 
     fn remove(&mut self) {
-        self.dir.remove_lumps(self.re_name.clone());
+        let removed = self.dir.remove_lumps(self.re_name.clone());
+        
+        self.info.num_lumps -= removed as i32;
     }
 
     fn save<P: AsRef<Path>>(&mut self, path: P) {

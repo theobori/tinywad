@@ -63,8 +63,21 @@ impl Default for LumpInfo {
 }
 
 impl LumpInfo {
+    pub fn new(
+        pos: i32,
+        size: i32,
+        name: [u8; 8]
+    ) -> Self {
+        Self {
+            pos,
+            size,
+            name,
+            id: [0x00; 12],
+            state: LumpState::Default
+        }
+    }
     /// Filter `value` with ascii characters
-    fn ascii(&self, value: String) -> String {
+    fn ascii(value: String) -> String {
         value.chars().filter(
             | c | {
                 c.is_ascii_alphanumeric() || c.is_ascii_punctuation()
@@ -84,12 +97,12 @@ impl LumpInfo {
 
     /// Get the lump unique ID filtered by ascii characters only
     pub fn id_ascii(&self) -> String {
-        self.ascii(self.id())
+        Self::ascii(self.id())
     }
 
     /// Get the name filtered by ascii characters only
     pub fn name_ascii(&self) -> String {
-        self.ascii(self.name())
+        Self::ascii(self.name())
     }
 
     /// Returns if the metadata is overwritable
@@ -130,6 +143,18 @@ impl From<&[u8]> for LumpInfo {
             id,
             state: LumpState::Default
         }
+    }
+}
+
+impl Into<Vec<u8>> for LumpInfo {
+    fn into(self) -> Vec<u8> {
+        let mut ret = Vec::new();
+
+        ret.append(&mut i32::to_le_bytes(self.pos).to_vec());
+        ret.append(&mut i32::to_le_bytes(self.size).to_vec());
+        ret.append(&mut self.name.to_vec());
+
+        ret
     }
 }
 

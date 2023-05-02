@@ -12,7 +12,5 @@ pub mod lumps;
 pub mod properties;
 /// Lumps directory
 pub mod dir;
-/// Headers to edit WAD
-pub mod header;
 /// Build a new WAD file from a source one
 pub mod output;

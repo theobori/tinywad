@@ -1,12 +1,8 @@
 use std::fmt::Display;
-use dyn_clone::{
-    clone_trait_object,
-    DynClone
-};
 
 use crate::lump::LumpData;
 
-pub trait Lump: Display + DynClone {
+pub trait Lump: Display {
     /// parse the lump as a file if parseable
     fn parse(&mut self);
     /// Save the data as a file to the dir `dir`
@@ -21,5 +17,3 @@ pub trait Lump: Display + DynClone {
     /// So `buffer` technically represents a file
     fn update(&mut self, buffer: &Vec<u8>);
 }
-
-clone_trait_object!(Lump);

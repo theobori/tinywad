@@ -9,13 +9,15 @@ A tiny lib to manage WAD file like DOOM
 
 ## 💽 Compatibility
 
-Official games status:
+Here is some games that have been tested
+
+Official (IWAD):
 
 - `DOOM1.wad` 
 - `DOOM2.wad` 
 - `HEXEN.wad` 
 
-Mods/unofficial games:
+Mods/unofficial (PWAD):
 
 - `DBP37_AUGZEN.wad`
 
@@ -59,6 +61,7 @@ Fix lumps linked hashmap | ✅
 Add lump unique coherent IDs | ✅
 Update lump size in the metadatas | ✅
 Include static update into the WAD build process | ❌
+Impl new for LumpInfo | ❌
 
 ## ℹ️ Documentation
 

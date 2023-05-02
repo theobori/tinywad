@@ -31,7 +31,6 @@ lazy_static! {
 const MAX_PAL: usize = 13;
 
 /// Representing the lumps directory data
-#[derive(Clone)]
 pub struct LumpsDirectory {
     /// Lumps hashmap <Name, Infos>
     pub lumps: LinkedHashMap<String, Box<dyn Lump>>,
@@ -67,15 +66,19 @@ impl LumpsDirectory {
     }
 
     /// Remove matching index
-    pub fn remove_lumps(&mut self, re: Regex) {
-        for name in self.matches(re) {
-            let lump = self.lumps.get_mut(&name).unwrap();
+    pub fn remove_lumps(&mut self, re: Regex) -> usize {
+        let matches = self.matches(re);
+
+        for name in matches.iter() {
+            let lump = self.lumps.get_mut(name).unwrap();
             let mut data = lump.data();
 
             data.metadata.state = LumpState::Deleted;
 
             lump.set_data(data);
         }
+
+        matches.len()
     }
 
     /// Returns the lumps directory statistics
