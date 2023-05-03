@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use regex::Regex;
+use lazy_static::lazy_static;
 
 use crate::{
     wad::WadInfo,
@@ -8,8 +9,12 @@ use crate::{
     lump::LumpState,
 };
 
-/// str representing a regex matching a virtual lump (markers)
-pub const VIRTUAL_LUMP_RE: &str = r"^([FPS]{1,2}_(?:START|END))|([FPS]{1}_?\d{0,2}_(?:START|END))$";
+lazy_static! {
+    /// str representing a regex matching a virtual lump (markers)
+    static ref VLUMP_RE: Regex = Regex::new(
+        r"^([FPS]{1,2}_(?:START|END))|([FPS]{1}_?\d{0,2}_(?:START|END))$"
+    ).unwrap();
+}
 
 /// Manage the build of a new WAD file
 pub struct WadOutput<'a> {
@@ -49,7 +54,7 @@ impl<'a> WadOutput<'a> {
     fn build_offsets(&mut self) {
         let mut offset = self.info.dir_pos + 16 * self.info.num_lumps;
         
-        for (_, lump) in self.dir.lumps.iter() {
+        for lump in self.dir.lumps.iter() {
             let metadata = lump.data().metadata;
             
             if metadata.state == LumpState::Deleted {
@@ -69,9 +74,8 @@ impl<'a> WadOutput<'a> {
 
     /// Write the file entries into `self.dest`
     fn build_file_entries(&mut self) {
-        let re = Regex::new(VIRTUAL_LUMP_RE).unwrap();
 
-        for (_, lump) in self.dir.lumps.iter() {
+        for lump in self.dir.lumps.iter() {
             let mut metadata = lump.data().metadata;
             
             if metadata.state == LumpState::Deleted {
@@ -79,7 +83,7 @@ impl<'a> WadOutput<'a> {
             }
             
             let offset = self.offsets.get(&metadata.pos).unwrap();
-            if re.is_match(&metadata.name_ascii()) {
+            if VLUMP_RE.is_match(&metadata.name_ascii()) {
                 metadata.pos = 0;
             } else {
                 metadata.pos = *offset;
@@ -96,7 +100,7 @@ impl<'a> WadOutput<'a> {
     /// because one loop implies to use `self.dest.insert` and it copies
     /// values instead of using references
     fn build_raw_lumps(&mut self) {
-        for (_, lump) in self.dir.lumps.iter() {
+        for lump in self.dir.lumps.iter() {
             if lump.data().metadata.state != LumpState::Deleted {
                 // Write the raw lump content
                 self.dest.append(&mut lump.data().buffer);

@@ -4,16 +4,15 @@ use std::{
    str::FromStr
 };
 
-use linked_hash_map::LinkedHashMap;
 use regex::{Regex, Error};
 
 use crate::{
     error::WadError,
-    models::operation::WadOp,
+    models::{operation::WadOp, lump::Lump},
     dir::LumpsDirectory,
-    lumps::palette::Palettes,
+    lumps::{palette::Palettes, unknown::Unknown},
     properties::file::PathWrap,
-    output::WadOutput
+    output::WadOutput, lump::{LumpAdd, LumpAddKind, LumpData, LumpInfo, LumpKind}
 };
 
 /// Default re_name used by the `Wad` struct
@@ -149,7 +148,7 @@ impl Wad {
             src: Vec::new(),
             re_name: Regex::new(DEFAULT_RE_NAME).unwrap(),
             dir: LumpsDirectory {
-                lumps: LinkedHashMap::new(),
+                lumps: Vec::new(),
                 pal: Palettes::default()
             }
         }
@@ -235,6 +234,11 @@ impl Wad {
         output.build();
         output.buffer()
     }
+
+    /// Get a lump by its name
+    pub fn lump(&self, name: &str) -> Option<&Box<dyn Lump>> {
+        self.dir.lump(name)
+    }
 }
 
 impl WadOp for Wad {
@@ -317,5 +321,69 @@ impl WadOp for Wad {
             self.re_name.clone(),
             | lump | lump.update(buffer)
         );
+    }
+
+    fn add_lump_raw(&mut self, add: LumpAdd) -> Result<(), WadError> {
+        // A little bit hacky, it is just a way to get an unique position
+        // it is useful for building a new WAD
+        let last_lump = self.dir.lumps.get(
+            self.info.num_lumps as usize - 1
+        );
+
+        if last_lump.is_none() {
+            return Err(WadError::Unknown)
+        }
+
+        let pos = last_lump
+                .unwrap()
+                .data()
+                .metadata.pos;
+        
+        let metadata = LumpInfo::new(
+            pos + 1,
+            add.buffer.len() as i32,
+            add.name
+        );
+        let unknown = Unknown {
+            data: LumpData {
+                buffer: add.buffer.clone(),
+                metadata,
+                kind: LumpKind::Unknown
+            }
+        };
+        let lump: Box<dyn Lump> = Box::new(unknown);
+        let index = match add.kind {
+            LumpAddKind::After(name) => {
+                let i = self.dir.index(name);
+
+                if i.is_none() {
+                    return Err(WadError::InvalidLumpName)
+                }
+
+                i.unwrap() + 1
+            },
+            LumpAddKind::Before(name) => {
+                let i = self.dir.index(name);
+
+                if i.is_none() {
+                    return Err(WadError::InvalidLumpName)
+                }
+
+                let ret = i.unwrap();
+
+                if ret <= 0 {
+                    0
+                } else {
+                    ret - 1
+                }
+            },
+            LumpAddKind::Front => 0,
+            LumpAddKind::Back => self.info.num_lumps as usize,
+        };
+
+        self.dir.lumps.insert(index, lump);
+        self.info.num_lumps += 1;
+
+        Ok(())
     }
 }

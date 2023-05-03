@@ -1,42 +1,24 @@
 # 🩸 tinywad
 
-A tiny lib to manage WAD file like DOOM
+A tiny lib to manage WAD file like DOOM1/2, HEXEN, etc..
+
+It supports the following features:
+- Load WAD buffer/file
+- Extract lump raw content
+- Extract lump as original files (PNGs)
+- Extract the image lumps with a custom color palette
+- Update lump raw content
+- Build a IWAD/PWAD
+- Add/insert lumps then save the WAD file
 
 ## 📖 How to build and run ?
 
 1. Install the dependencies
     - `cargo`
 
-## 💽 Compatibility
 
-Here is some games that have been tested
-
-Official (IWAD):
-
-- `DOOM1.wad` 
-- `DOOM2.wad` 
-- `HEXEN.wad` 
-
-Mods/unofficial (PWAD):
-
-- `DBP37_AUGZEN.wad`
-
-## ℹ️ Usage example
-
-```rust
-fn main() -> Result<(), WadError> {
-    let mut wad = Wad::new();
-
-    wad.set_palette(0);
-    wad.load_from_file("wads/doom1.wad")?;
-    wad.remove_by_name("^WILV*").unwrap();
-    wad.save_lumps("./tmp");
-    wad.save_lumps_raw("./tmp");
-    wad.save("test.wad");
-
-    Ok(())
-}
-```
+## ⭐ Use cases
+TODO
 
 ## 🪧 Supported lump types
 
@@ -52,16 +34,15 @@ Name           | State
 Dump WAD header | ✅
 Dump lumps metadata | ✅
 Extract (save) lump | ✅
-Update raw lump | ✅
-Update lump | ❌
+Update lump from raw buffer/file| ✅
+Update lump from original buffer/files (PNGs) | ❌
 Rebuild then save the WAD as a new file | ✅
 Extract sounds | ⚠️
 Extract raw lump | ✅
-Fix lumps linked hashmap | ✅
+Remove lumps | ✅
 Add lump unique coherent IDs | ✅
 Update lump size in the metadatas | ✅
-Include static update into the WAD build process | ❌
-Impl new for LumpInfo | ❌
+Add lump with raw buffer | ✅
 
 ## ℹ️ Documentation
 

@@ -3,7 +3,7 @@ use regex::Error;
 
 use crate::{
     error::WadError,
-    properties::file::PathWrap
+    properties::file::PathWrap, lump::LumpAdd
 };
 
 /// Operate on the matching lumps
@@ -55,4 +55,10 @@ pub trait WadOp {
 
         Ok(())
     }
+
+    /// Add lump from a raw buffer
+    /// 
+    /// We assume this method will be used only for build a new WAD
+    /// and not for dump or extract
+    fn add_lump_raw(&mut self, add: LumpAdd) -> Result<(), WadError>;
 }

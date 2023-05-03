@@ -1,6 +1,5 @@
 use std::collections::{LinkedList, HashMap};
 use lazy_static::lazy_static;
-use linked_hash_map::LinkedHashMap;
 use regex::Regex;
 
 use crate::{
@@ -33,7 +32,7 @@ const MAX_PAL: usize = 13;
 /// Representing the lumps directory data
 pub struct LumpsDirectory {
     /// Lumps hashmap <Name, Infos>
-    pub lumps: LinkedHashMap<String, Box<dyn Lump>>,
+    pub lumps: Vec<Box<dyn Lump>>,
     /// Palette
     pub pal: Palettes,
 }
@@ -45,8 +44,10 @@ impl LumpsDirectory {
         re: Regex,
         f: F
     ) {
-        for (name, lump) in self.lumps.iter() {
-            if re.is_match(name) {
+        for lump in self.lumps.iter() {
+            let name = lump.data().metadata.name_ascii();
+            
+            if re.is_match(&name) {
                 f(lump);
             }
         }
@@ -58,8 +59,10 @@ impl LumpsDirectory {
         re: Regex,
         f: F
     ) {
-        for (name, lump) in self.lumps.iter_mut() {
-            if re.is_match(name) {
+        for lump in self.lumps.iter_mut() {
+            let name = lump.data().metadata.name_ascii();
+            
+            if re.is_match(&name) {
                 f(lump);
             }
         }
@@ -67,10 +70,10 @@ impl LumpsDirectory {
 
     /// Remove matching index
     pub fn remove_lumps(&mut self, re: Regex) -> usize {
-        let matches = self.matches(re);
+        let indexes = self.indexes(re);
 
-        for name in matches.iter() {
-            let lump = self.lumps.get_mut(name).unwrap();
+        for index in indexes.iter() {
+            let lump = self.lumps.get_mut(*index).unwrap();
             let mut data = lump.data();
 
             data.metadata.state = LumpState::Deleted;
@@ -78,51 +81,48 @@ impl LumpsDirectory {
             lump.set_data(data);
         }
 
-        matches.len()
+        indexes.len()
     }
 
-    /// Returns the lumps directory statistics
-    /// 
-    /// hashmap type --> <State, amount>
-    pub fn stats(&self) -> LinkedHashMap<LumpState, usize> {
-        let mut ret = LinkedHashMap::new();
-
-        for (_, lump) in self.lumps.iter() {
-            let state = lump.data().metadata.state;
-            let count = ret.get_mut(&state).unwrap();
-
-            *count += 1;
-        }
-
-        ret
-    }
-
-    // Return the number of alive lumps (active)
-    pub fn alive_count(&self) -> usize {
-        let ret: Vec<bool> = self.lumps
-            .iter()
-            .map(
-                | (_, lump) | {
-                    lump.data().metadata.state.is_alive()
-                }
-            )
-            .filter(| x | *x == true)
-            .collect();
-
-        ret.len()
-    }
-
-    /// Get the matching lump names
-    pub fn matches(&self, re: Regex) -> Vec<String> {
+    /// Returns the indexes index
+    pub fn indexes(&self, re: Regex) -> Vec<usize> {
         let mut ret = Vec::new();
 
-        for (name, _) in self.lumps.iter() {
-            if re.is_match(name) {
-                ret.push((*name).clone());
+        for (i, lump) in self.lumps.iter().enumerate() {
+            let name = lump.data().metadata.id_ascii();
+
+            if re.is_match(&name) {
+                ret.push(i);
             }
         }
         
         ret
+    }
+
+    /// Returns a lump index by name
+    pub fn index(&self, name: &str) -> Option<usize> {
+        for (i, lump) in self.lumps.iter().enumerate() {
+            if &*lump.data().metadata.id_ascii() == name {
+                return Some(i)
+            }
+        }
+        
+        None
+    }
+
+    /// Returns a lump by name
+    pub fn lump(&self, name: &str) -> Option<&Box<dyn Lump>> {
+        let index = self.index(name);
+
+        if index.is_none() {
+            return None
+        }
+
+        Some(
+            self.lumps
+                .get(index.unwrap())
+                .unwrap()
+        )
     }
 
     /// Set the palette index
@@ -170,6 +170,7 @@ impl LumpsDirectory {
             );
             let pos = metadata.pos as usize;
             let size = metadata.size as usize;
+
             
             // Represents the lump type/name
             let name = metadata.name_ascii();
@@ -192,7 +193,6 @@ impl LumpsDirectory {
                     .clone()
                 }
             };
-
 
             for (i, byte) in id.as_bytes().iter().enumerate() {
                 metadata.id[i] = *byte;
@@ -275,7 +275,7 @@ impl LumpsDirectory {
             lump.parse();
 
             // Add the lump to the hashmap
-            self.lumps.insert(metadata.id_ascii(), lump);
+            self.lumps.push(lump);
         }
     }
 }

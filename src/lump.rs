@@ -68,11 +68,18 @@ impl LumpInfo {
         size: i32,
         name: [u8; 8]
     ) -> Self {
+
+        let mut id = [0x00; 12];
+
+        for i in 0..name.len() {
+            id[i] = name[i];
+        }
+
         Self {
             pos,
             size,
             name,
-            id: [0x00; 12],
+            id,
             state: LumpState::Default
         }
     }
@@ -196,5 +203,53 @@ impl Into<Vec<u8>> for LumpData {
         ret.append(&mut self.metadata.name.to_vec());
 
         ret
+    }
+}
+
+/// Every kind for `LumpAdd`
+pub enum LumpAddKind {
+    /// After a lump (lump name)
+    After(&'static str),
+    /// Before a lump (lump name)
+    Before(&'static str),
+    /// It add the lump to the start
+    /// 
+    /// *Not recommended for an IWAD*
+    Front,
+    /// Add the lump to the end
+    Back
+}
+
+/// Metadata for an adding lump operation
+pub struct LumpAdd<'a> {
+    /// Kind of adding
+    pub kind: LumpAddKind,
+    /// Lump raw buffer
+    pub buffer: &'a Vec<u8>,
+    /// Lump name
+    pub name: [u8; 8]
+}
+
+impl<'a> LumpAdd<'a> {
+    pub fn new(
+        kind: LumpAddKind,
+        buffer: &'a Vec<u8>,
+        name: &str
+    ) -> Self {
+        let mut array = [0; 8];
+        let mut i = 0;
+        let bytes = name.as_bytes();
+
+        while i < array.len() && i < bytes.len() {
+            array[i] = bytes[i];
+
+            i += 1;
+        }
+
+        Self {
+            kind,
+            buffer,
+            name: array
+        }
     }
 }
