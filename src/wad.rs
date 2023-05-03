@@ -165,7 +165,7 @@ impl Wad {
     }
 
     /// Set `self.re_name`
-    pub fn set_re_name(&mut self, value: &str) {
+    pub fn select(&mut self, value: &str) {
         let regex = Regex::new(value);
 
         self.re_name = match regex {
@@ -326,19 +326,13 @@ impl WadOp for Wad {
     fn add_lump_raw(&mut self, add: LumpAdd) -> Result<(), WadError> {
         // A little bit hacky, it is just a way to get an unique position
         // it is useful for building a new WAD
-        let last_lump = self.dir.lumps.get(
-            self.info.num_lumps as usize - 1
-        );
-
-        if last_lump.is_none() {
-            return Err(WadError::Unknown)
-        }
-
-        let pos = last_lump
-                .unwrap()
-                .data()
-                .metadata.pos;
         
+        let pos = self.dir.lumps
+            .iter()
+            .map(| lump | lump.data().metadata.pos)
+            .max()
+            .unwrap_or(1);
+
         let metadata = LumpInfo::new(
             pos + 1,
             add.buffer.len() as i32,

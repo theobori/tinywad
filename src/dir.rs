@@ -27,7 +27,8 @@ lazy_static! {
     static ref RE_S_END: Regex = Regex::new("S[0-9]+_END").unwrap();
 }
 
-const MAX_PAL: usize = 13;
+/// DOOM Palette max value
+pub const MAX_PAL: usize = 13;
 
 /// Representing the lumps directory data
 pub struct LumpsDirectory {
@@ -157,6 +158,8 @@ impl LumpsDirectory {
 
     /// Iterating over the directory and filling `self.lumps`
     pub fn parse(&mut self, info: WadInfo, buffer: &Vec<u8>) {
+        self.lumps.clear();
+    
         let mut marker: LinkedList<LumpKind> = LinkedList::new();
         // Preventing multiple names
         let mut names: HashMap<String, usize> = HashMap::new();
