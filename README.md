@@ -43,6 +43,10 @@ fn main() -> Result<(), WadError> {
 }
 ```
 
+#### Screenshot(s)
+
+<img src="/assets/doom_gate3.png" width="60%">
+
 #### Extracting lumps with custom palettes
 
 ```rust
@@ -72,6 +76,22 @@ fn main() -> Result<(), WadError> {
     Ok(())
 }
 ```
+
+#### Extracted lumps (as PNGs)
+
+<img src="/assets/doom2/pal_0/BOSFB0.png">
+<img src="/assets/doom2/pal_1/BOSFB0.png">
+<img src="/assets/doom2/pal_2/BOSFB0.png">
+<img src="/assets/doom2/pal_3/BOSFB0.png">
+<img src="/assets/doom2/pal_4/BOSFB0.png">
+<img src="/assets/doom2/pal_5/BOSFB0.png">
+<img src="/assets/doom2/pal_6/BOSFB0.png">
+<img src="/assets/doom2/pal_7/BOSFB0.png">
+<img src="/assets/doom2/pal_8/BOSFB0.png">
+<img src="/assets/doom2/pal_9/BOSFB0.png">
+<img src="/assets/doom2/pal_10/BOSFB0.png">
+<img src="/assets/doom2/pal_11/BOSFB0.png">
+<img src="/assets/doom2/pal_12/BOSFB0.png">
 
 #### Building a PWAD from scratch
 
@@ -132,6 +152,8 @@ fn main() -> Result<(), WadError> {
 }
 ```
 
+<img src="/assets/doom_floor6_1.png" width="60%">
+
 #### Dumping metadata
 
 ```rust
@@ -147,6 +169,21 @@ fn main() -> Result<(), WadError> {
 
     Ok(())
 }
+```
+
+#### Output
+
+```
+Name: XXTIC, Size: 8, Offset: 12
+Name: STARTUP, Size: 153648, Offset: 20
+Name: PLAYPAL, Size: 21504, Offset: 153668, Palettes amount: 28
+Name: COLORMAP, Size: 8704, Offset: 175172
+Name: FOGMAP, Size: 8704, Offset: 183876
+Name: TINTTAB, Size: 65536, Offset: 192580
+Name: TRANTBL0, Size: 256, Offset: 258116
+Name: TRANTBL1, Size: 256, Offset: 258372
+Name: TRANTBL2, Size: 256, Offset: 258628
+...
 ```
 
 ## 🪧 Supported lump types
