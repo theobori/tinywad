@@ -79,19 +79,21 @@ fn main() -> Result<(), WadError> {
 
 #### Extracted lumps (as PNGs)
 
-<img src="/assets/doom2/pal_0/BOSFB0.png">
-<img src="/assets/doom2/pal_1/BOSFB0.png">
-<img src="/assets/doom2/pal_2/BOSFB0.png">
-<img src="/assets/doom2/pal_3/BOSFB0.png">
-<img src="/assets/doom2/pal_4/BOSFB0.png">
-<img src="/assets/doom2/pal_5/BOSFB0.png">
-<img src="/assets/doom2/pal_6/BOSFB0.png">
-<img src="/assets/doom2/pal_7/BOSFB0.png">
-<img src="/assets/doom2/pal_8/BOSFB0.png">
-<img src="/assets/doom2/pal_9/BOSFB0.png">
-<img src="/assets/doom2/pal_10/BOSFB0.png">
-<img src="/assets/doom2/pal_11/BOSFB0.png">
-<img src="/assets/doom2/pal_12/BOSFB0.png">
+<p float="left">
+    <img src="/assets/doom2/pal_0/BOSFB0.png">
+    <img src="/assets/doom2/pal_1/BOSFB0.png">
+    <img src="/assets/doom2/pal_2/BOSFB0.png">
+    <img src="/assets/doom2/pal_3/BOSFB0.png">
+    <img src="/assets/doom2/pal_4/BOSFB0.png">
+    <img src="/assets/doom2/pal_5/BOSFB0.png">
+    <img src="/assets/doom2/pal_6/BOSFB0.png">
+    <img src="/assets/doom2/pal_7/BOSFB0.png">
+    <img src="/assets/doom2/pal_8/BOSFB0.png">
+    <img src="/assets/doom2/pal_9/BOSFB0.png">
+    <img src="/assets/doom2/pal_10/BOSFB0.png">
+    <img src="/assets/doom2/pal_11/BOSFB0.png">
+    <img src="/assets/doom2/pal_12/BOSFB0.png">
+</p>
 
 #### Building a PWAD from scratch
 
