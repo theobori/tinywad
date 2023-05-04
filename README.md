@@ -59,10 +59,11 @@ use tinywad::wad::Wad;
 
 fn main() -> Result<(), WadError> {
     let mut doom_2 = Wad::new();
+    doom_2.load_from_file("wads/doom2.wad")?;
 
     for pal in 0..MAX_PAL {
         doom_2.set_palette(pal);
-        doom_2.load_from_file("wads/doom2.wad")?;
+        doom_2.reload()?;
         doom_2.select("^BOSF");
         
         let dirpath = format!("doom2/pal_{}", pal);
@@ -70,7 +71,6 @@ fn main() -> Result<(), WadError> {
         fs::create_dir_all(dirpath.clone()).unwrap();
 
         doom_2.save_lumps(dirpath);
-        //doom_2.save_lumps_raw(dirpath);
     }
 
     Ok(())

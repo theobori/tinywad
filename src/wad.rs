@@ -219,6 +219,13 @@ impl Wad {
         self.load(buffer)
     }
 
+    /// Reparse the WAD
+    /// 
+    /// Could be load after changing the palette index
+    pub fn reload(&mut self) -> Result<(), WadError> {
+        self.load(self.src.clone())
+    }
+
     /// Build the entire WAD buffer based on its abstraction and `self.src`
     /// 
     /// This method avoids us to write the changes directly on `self.src`,
