@@ -36,9 +36,23 @@ pub struct LumpsDirectory {
     pub lumps: Vec<Box<dyn Lump>>,
     /// Palette
     pub pal: Palettes,
+    /// Used during the directory parsing
+    marker: LinkedList<LumpKind>
+}
+
+impl Default for LumpsDirectory {
+    fn default() -> Self {
+        Self {
+            lumps: Vec::new(),
+            pal: Palettes::default(),
+            marker: LinkedList::new() }
+    }
 }
 
 impl LumpsDirectory {
+    pub fn new() -> Self {
+        Self::default()
+    }
     /// Iterate then calling a function on the matching lumps
     pub fn callback_lumps<F: Fn(&Box<dyn Lump>)>(
         &self,
@@ -132,33 +146,64 @@ impl LumpsDirectory {
     }
 
     /// Update the marker, handling the 0 bytes lumps like flat/patch delimiters
-    fn set_marker(
-        &self,
-        marker: &mut LinkedList<LumpKind>,
-        name: &str
-    ) {
+    fn set_marker(&mut self, name: &str) {
         if RE_F_START.is_match(name) {
-            marker.push_back(LumpKind::Flat);
+            self.marker.push_back(LumpKind::Flat);
         }
         
         if RE_S_START.is_match(name) {
-            marker.push_back(LumpKind::Patch);
+            self.marker.push_back(LumpKind::Patch);
         } 
         
         if RE_F_END.is_match(name) {
-            marker.pop_back();
+            self.marker.pop_back();
         }
 
         if RE_S_END.is_match(name) {
-            marker.pop_back();
+            self.marker.pop_back();
         }
 
         // Add marker for music
     }
 
+    fn image_lump(
+        &mut self,
+        metadata: &LumpInfo,
+        name: &str,
+        mut data: LumpData
+    ) -> Box<dyn Lump> {
+        self.set_marker(name);
+
+        if metadata.size <= 0 || self.marker.len() <= 0 {
+            return Box::new(Unknown { data })
+        }
+
+        let last = self.marker.back().unwrap();
+
+        match last {
+            LumpKind::Patch => {
+                data.kind = LumpKind::Patch;
+
+                Box::new(DoomImage::new(
+                    self.pal.clone(),
+                    data
+                ))
+            },
+            LumpKind::Flat => {
+                data.kind = LumpKind::Flat;
+                Box::new(Flat::new(
+                    self.pal.clone(),
+                    data
+                ))
+            },
+            _ => Box::new(Unknown { data })
+        }
+    }
+
     /// Iterating over the directory and filling `self.lumps`
     pub fn parse(&mut self, info: WadInfo, buffer: &Vec<u8>) {
         self.lumps.clear();
+        self.marker.clear();
     
         let mut marker: LinkedList<LumpKind> = LinkedList::new();
         // Preventing multiple names
@@ -173,9 +218,6 @@ impl LumpsDirectory {
             );
             let pos = metadata.pos as usize;
             let size = metadata.size as usize;
-
-            
-            // Represents the lump type/name
             let name = metadata.name_ascii();
 
             let id = match names.get(&name) {
@@ -183,11 +225,7 @@ impl LumpsDirectory {
                     let value = count + 1;
                     names.insert(name.clone(), value);
 
-                    format!(
-                        "{}{}",
-                        name,
-                        value
-                    )
+                    format!("{}{}", name, value)
                 },
                 None => {
                     names.insert(name.clone(), 0);
@@ -223,55 +261,26 @@ impl LumpsDirectory {
                     Box::new(Unknown { data })
                 },
 
-                "F_END" => {
-                    marker.pop_back();
-                    
-                    Box::new(Unknown { data })
-                },
-
                 "S_START" | "SS_START" => {
                     marker.push_back(LumpKind::Patch);
 
                     Box::new(Unknown { data })
                 },
 
-                "S_END" | "SS_END" => {
+                "F_END" | "S_END" | "SS_END" => {
                     marker.pop_back();
 
                     Box::new(Unknown { data })
                 },
 
-                _ => {
-                    // Check the lump name with regex for marker
-                    self.set_marker(&mut marker, &name);
+                "TITLEPIC" => {
+                    Box::new(DoomImage::new(
+                        self.pal.clone(),
+                        data
+                    ))
+                },
 
-                    if metadata.size > 0 && marker.len() > 0 {
-                        let last = marker.back().unwrap();
-
-                        match last {
-                            LumpKind::Patch => {
-                                // Match the engine (DOOM, HEXEN, etc...)
-                                // Only intended for the DOOM engine right now
-                                data.kind = LumpKind::Patch;
-
-                                Box::new(DoomImage::new(
-                                    self.pal.clone(),
-                                    data
-                                ))
-                            },
-                            LumpKind::Flat => {
-                                data.kind = LumpKind::Flat;
-                                Box::new(Flat::new(
-                                    self.pal.clone(),
-                                    data
-                                ))
-                            },
-                            _ => Box::new(Unknown { data })
-                        }
-                    } else {
-                        Box::new(Unknown { data })
-                    }
-                }
+                _ => self.image_lump(&metadata, &name, data)
             };
 
             // Fetch and decode data from the WAD buffer

@@ -147,10 +147,7 @@ impl Wad {
             info: WadInfo::default(),
             src: Vec::new(),
             re_name: Regex::new(DEFAULT_RE_NAME).unwrap(),
-            dir: LumpsDirectory {
-                lumps: Vec::new(),
-                pal: Palettes::default()
-            }
+            dir: LumpsDirectory::new()
         }
     }
 
