@@ -4,6 +4,34 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+include = [
+    "src/**",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE"
+]
+
+homepage = "https://github.com/theobori/tinywad"
+description = "A library to manage/compose WAD resources"
+repository = "https://github.com/theobori/tinywad"
+
+keywords = [
+    "lib",
+    "wad",
+    "patch",
+    "doom",
+    "lumps"
+]
+
+categories = [
+    "multimedia::images",
+    "multimedia::audio",
+    "parsing",
+    "rendering::data-formats"
+]
+
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 thiserror = "1.0.37"
