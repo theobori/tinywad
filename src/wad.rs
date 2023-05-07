@@ -10,7 +10,7 @@ use crate::{
     error::WadError,
     models::{operation::WadOp, lump::Lump},
     dir::LumpsDirectory,
-    lumps::{palette::Palettes, unknown::Unknown},
+    lumps::unknown::Unknown,
     properties::file::PathWrap,
     output::WadOutput, lump::{LumpAdd, LumpAddKind, LumpData, LumpInfo, LumpKind}
 };

@@ -16,7 +16,6 @@ It supports the following features:
 1. Install the dependencies
     - `cargo`
 
-
 ## ⭐ Use cases
 
 #### Patching directly the IWAD
@@ -194,6 +193,7 @@ Name: TRANTBL2, Size: 256, Offset: 258628
 - Flat
 - Palette
 - Markers
+- Music
 
 ## ✅ Todo
 
@@ -203,9 +203,9 @@ Dump WAD header | ✅
 Dump lumps metadata | ✅
 Extract (save) lump | ✅
 Update lump from raw buffer/file| ✅
-Update lump from original buffer/files (PNGs) | ❌
+Update lump from original buffer/files (PNG, MIDI, etc..) | ❌
 Rebuild then save the WAD as a new file | ✅
-Extract sounds | ⚠️
+Extract DOOM musics | ✅
 Extract raw lump | ✅
 Remove lumps | ✅
 Add lump unique coherent IDs | ✅

@@ -16,6 +16,10 @@ pub enum WadError {
     InvalidOperation,
     #[error("Unable create resources")]
     Write,
+    #[error("Uknonw MUS event")]
+    UnknownMusEvent,
+    #[error("Invalid lump")]
+    InvalidLump,
     #[error("Unable to use this API")]
     Unknown
 }

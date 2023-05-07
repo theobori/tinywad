@@ -10,9 +10,11 @@ use crate::{
         LumpData, LumpState
     },
     lumps::{
-        doom_image::DoomImage,
+        patch::DoomImage,
         flat::Flat,
-        unknown::Unknown, palette::Palettes
+        unknown::Unknown,
+        palette::Palettes,
+        music::lump::DoomMusic
     }, wad::WadInfo
 };
 
@@ -25,6 +27,8 @@ lazy_static! {
     static ref RE_S_START: Regex = Regex::new("S[0-9]+_START").unwrap();
     /// Patch/Sprite end lump name
     static ref RE_S_END: Regex = Regex::new("S[0-9]+_END").unwrap();
+    /// DOOM games lump name
+    static ref RE_DOOM_MUSIC: Regex = Regex::new("^D_").unwrap();
 }
 
 /// DOOM Palette max value
@@ -162,11 +166,9 @@ impl LumpsDirectory {
         if RE_S_END.is_match(name) {
             self.marker.pop_back();
         }
-
-        // Add marker for music
     }
 
-    fn image_lump(
+    fn pop_marker(
         &mut self,
         metadata: &LumpInfo,
         name: &str,
@@ -280,7 +282,13 @@ impl LumpsDirectory {
                     ))
                 },
 
-                _ => self.image_lump(&metadata, &name, data)
+                _ => {
+                    if RE_DOOM_MUSIC.is_match(&name) {
+                        Box::new(DoomMusic::new(data))
+                    } else {
+                        self.pop_marker(&metadata, &name, data)
+                    }
+                }
             };
 
             // Fetch and decode data from the WAD buffer
