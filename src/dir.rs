@@ -7,7 +7,7 @@ use crate::{
     lump::{
         LumpKind,
         LumpInfo,
-        LumpData, LumpState
+        LumpData, LumpState, LumpAddKind
     },
     lumps::{
         patch::DoomImage,
@@ -15,7 +15,7 @@ use crate::{
         unknown::Unknown,
         palette::Palettes,
         music::lump::DoomMusic
-    }, wad::WadInfo
+    }, wad::WadInfo, error::WadError
 };
 
 lazy_static! {
@@ -127,6 +127,45 @@ impl LumpsDirectory {
         }
         
         None
+    }
+
+    /// Find an index depending of the kind `kind`
+    /// 
+    /// Mainly used for new lumps
+    pub fn index_from_kind(
+        &self,
+        kind: LumpAddKind
+    ) -> Result<usize, WadError> {
+        let ret = match kind {
+            LumpAddKind::After(name) => {
+                let i = self.index(name);
+
+                if i.is_none() {
+                    return Err(WadError::InvalidLumpName)
+                }
+
+                i.unwrap() + 1
+            },
+            LumpAddKind::Before(name) => {
+                let i = self.index(name);
+
+                if i.is_none() {
+                    return Err(WadError::InvalidLumpName)
+                }
+
+                let ret = i.unwrap();
+
+                if ret <= 0 {
+                    0
+                } else {
+                    ret - 1
+                }
+            },
+            LumpAddKind::Front => 0,
+            LumpAddKind::Back => self.lumps.len(),
+        };
+
+        Ok(ret)
     }
 
     /// Returns a lump by name

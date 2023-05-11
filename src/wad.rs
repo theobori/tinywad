@@ -349,35 +349,10 @@ impl WadOp for Wad {
                 kind: LumpKind::Unknown
             }
         };
+
+        // Lump informations
         let lump: Box<dyn Lump> = Box::new(unknown);
-        let index = match add.kind {
-            LumpAddKind::After(name) => {
-                let i = self.dir.index(name);
-
-                if i.is_none() {
-                    return Err(WadError::InvalidLumpName)
-                }
-
-                i.unwrap() + 1
-            },
-            LumpAddKind::Before(name) => {
-                let i = self.dir.index(name);
-
-                if i.is_none() {
-                    return Err(WadError::InvalidLumpName)
-                }
-
-                let ret = i.unwrap();
-
-                if ret <= 0 {
-                    0
-                } else {
-                    ret - 1
-                }
-            },
-            LumpAddKind::Front => 0,
-            LumpAddKind::Back => self.info.num_lumps as usize,
-        };
+        let index = self.dir.index_from_kind(add.kind)?;
 
         self.dir.lumps.insert(index, lump);
         self.info.num_lumps += 1;
