@@ -1,5 +1,8 @@
 # 🩸 tinywad
 
+![build](https://github.com/theobori/tinywad/actions/workflows/build.yml/badge.svg)
+
+
 A tiny lib to manage WAD file like DOOM1/2, HEXEN, etc..
 
 It supports the following features:

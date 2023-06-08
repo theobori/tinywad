@@ -246,7 +246,6 @@ impl LumpsDirectory {
         self.lumps.clear();
         self.marker.clear();
     
-        let mut marker: LinkedList<LumpKind> = LinkedList::new();
         // Preventing multiple names
         let mut names: HashMap<String, usize> = HashMap::new();
 
@@ -297,19 +296,19 @@ impl LumpsDirectory {
                 },
 
                 "F_START" => {
-                    marker.push_back(LumpKind::Flat);
+                    self.marker.push_back(LumpKind::Flat);
 
                     Box::new(Unknown { data })
                 },
 
                 "S_START" | "SS_START" => {
-                    marker.push_back(LumpKind::Patch);
+                    self.marker.push_back(LumpKind::Patch);
 
                     Box::new(Unknown { data })
                 },
 
                 "F_END" | "S_END" | "SS_END" => {
-                    marker.pop_back();
+                    self.marker.pop_back();
 
                     Box::new(Unknown { data })
                 },
