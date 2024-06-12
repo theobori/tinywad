@@ -1,13 +1,9 @@
 use std::collections::HashMap;
 
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
-use crate::{
-    wad::WadInfo,
-    dir::LumpsDirectory,
-    lump::LumpState,
-};
+use crate::{dir::LumpsDirectory, lump::LumpState, wad::WadInfo};
 
 lazy_static! {
     /// str representing a regex matching a virtual lump (markers)
@@ -21,22 +17,19 @@ pub struct WadOutput<'a> {
     /// The WAD controller
     info: WadInfo,
     /// Lumps offsets
-    /// 
+    ///
     /// Used because some lumps can have the same position (references)
     /// or virtual lumps
     offsets: HashMap<i32, i32>,
     dir: &'a LumpsDirectory,
     /// Destination buffer
-    /// 
+    ///
     /// It represents the final raw WAD file
-    dest: Vec<u8>
+    dest: Vec<u8>,
 }
 
 impl<'a> WadOutput<'a> {
-    pub fn new(
-        mut info: WadInfo,
-        dir: &'a LumpsDirectory,
-    ) -> WadOutput<'a> {
+    pub fn new(mut info: WadInfo, dir: &'a LumpsDirectory) -> WadOutput<'a> {
         // Skip the WAD metadata size
         info.dir_pos = 12;
 
@@ -49,23 +42,20 @@ impl<'a> WadOutput<'a> {
     }
 
     /// Computes every lump offset
-    /// 
+    ///
     /// Used because more than one lump can have the same offset
     fn build_offsets(&mut self) {
         let mut offset = self.info.dir_pos + 16 * self.info.num_lumps;
-        
+
         for lump in self.dir.lumps.iter() {
             let metadata = lump.data().metadata;
-            
+
             if metadata.state == LumpState::Deleted {
-                continue
+                continue;
             }
 
             if self.offsets.get(&metadata.pos).is_none() {
-                self.offsets.insert(
-                    metadata.pos,
-                    offset
-                );
+                self.offsets.insert(metadata.pos, offset);
             }
 
             offset += metadata.size;
@@ -74,14 +64,13 @@ impl<'a> WadOutput<'a> {
 
     /// Write the file entries into `self.dest`
     fn build_file_entries(&mut self) {
-
         for lump in self.dir.lumps.iter() {
             let mut metadata = lump.data().metadata;
-            
+
             if metadata.state == LumpState::Deleted {
-                continue
+                continue;
             }
-            
+
             let offset = self.offsets.get(&metadata.pos).unwrap();
             if VLUMP_RE.is_match(&metadata.name_ascii()) {
                 metadata.pos = 0;
@@ -95,8 +84,8 @@ impl<'a> WadOutput<'a> {
     }
 
     /// Write the lumps content into `self.dest`
-    /// 
-    /// Running 2 loops instead of one has better performance, 
+    ///
+    /// Running 2 loops instead of one has better performance,
     /// because one loop implies to use `self.dest.insert` and it copies
     /// values instead of using references
     fn build_raw_lumps(&mut self) {
@@ -109,7 +98,7 @@ impl<'a> WadOutput<'a> {
     }
 
     /// Build the new WAD file into `self.dest`
-    /// 
+    ///
     /// It requires a source WAD abstraction
     /// aka `self.dir` and the metadatas aka `self.info`
     pub fn build(&mut self) {

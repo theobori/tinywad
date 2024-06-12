@@ -1,18 +1,19 @@
 use std::{
-    path::Path,
     fs::{self},
-   str::FromStr
+    path::Path,
+    str::FromStr,
 };
 
-use regex::{Regex, Error};
+use regex::{Error, Regex};
 
 use crate::{
-    error::WadError,
-    models::{operation::WadOp, lump::Lump},
     dir::LumpsDirectory,
+    error::WadError,
+    lump::{LumpAdd, LumpData, LumpInfo, LumpKind},
     lumps::unknown::Unknown,
+    models::{lump::Lump, operation::WadOp},
+    output::WadOutput,
     properties::file::PathWrap,
-    output::WadOutput, lump::{LumpAdd, LumpAddKind, LumpData, LumpInfo, LumpKind}
 };
 
 /// Default re_name used by the `Wad` struct
@@ -27,7 +28,7 @@ pub const MAGIC_PWAD: &[u8] = &[0x50, 0x57, 0x41, 0x44];
 pub enum WadKind {
     Iwad,
     Pwad,
-    Unknown
+    Unknown,
 }
 
 impl From<&[u8]> for WadKind {
@@ -35,7 +36,7 @@ impl From<&[u8]> for WadKind {
         match magic {
             MAGIC_IWAD => Self::Iwad,
             MAGIC_PWAD => Self::Pwad,
-            _ => Self::Unknown
+            _ => Self::Unknown,
         }
     }
 }
@@ -45,7 +46,7 @@ impl Into<Vec<u8>> for WadKind {
         match self {
             Self::Iwad => MAGIC_IWAD.to_vec(),
             Self::Pwad => MAGIC_PWAD.to_vec(),
-            Self::Unknown => vec![0x00; 4]
+            Self::Unknown => vec![0x00; 4],
         }
     }
 }
@@ -58,7 +59,7 @@ pub enum WadOperationKind {
     SaveAs,
 }
 
-impl Default for WadOperationKind{
+impl Default for WadOperationKind {
     fn default() -> Self {
         Self::Dump
     }
@@ -72,11 +73,11 @@ impl FromStr for WadOperationKind {
             "dump" => Self::Dump,
             "save" => Self::Save,
             "save_as" => Self::SaveAs,
-            _ => return Err(WadError::InvalidOperation)
+            _ => return Err(WadError::InvalidOperation),
         };
 
         Ok(value)
-    } 
+    }
 }
 
 /// Wad metadata (header) (12 bytes)
@@ -87,7 +88,7 @@ pub struct WadInfo {
     /// Holding the lumps amount (4 bytes) (little-endian)
     pub num_lumps: i32,
     /// Holding pointer to the directory location (4 bytes) (little-endian)
-    pub dir_pos: i32
+    pub dir_pos: i32,
 }
 
 impl Default for WadInfo {
@@ -104,16 +105,8 @@ impl From<&[u8]> for WadInfo {
     fn from(bytes: &[u8]) -> Self {
         Self {
             kind: WadKind::from(&bytes[0..4]),
-            num_lumps: i32::from_le_bytes(
-                bytes[4..8]
-                    .try_into()
-                    .unwrap_or_default()
-            ),
-            dir_pos: i32::from_le_bytes(
-                bytes[8..12]
-                    .try_into()
-                    .unwrap_or_default()
-            )
+            num_lumps: i32::from_le_bytes(bytes[4..8].try_into().unwrap_or_default()),
+            dir_pos: i32::from_le_bytes(bytes[8..12].try_into().unwrap_or_default()),
         }
     }
 }
@@ -138,7 +131,7 @@ pub struct Wad {
     /// Filter (regex)
     re_name: Regex,
     /// Lumps directory
-    dir: LumpsDirectory
+    dir: LumpsDirectory,
 }
 
 impl Wad {
@@ -147,7 +140,7 @@ impl Wad {
             info: WadInfo::default(),
             src: Vec::new(),
             re_name: Regex::new(DEFAULT_RE_NAME).unwrap(),
-            dir: LumpsDirectory::new()
+            dir: LumpsDirectory::new(),
         }
     }
 
@@ -172,43 +165,31 @@ impl Wad {
     }
 
     /// Parse a buffer into lumps entries
-    pub fn load<T: Into<Vec<u8>>>(
-        &mut self,
-        buffer: T
-    ) -> Result<(), WadError> {
+    pub fn load<T: Into<Vec<u8>>>(&mut self, buffer: T) -> Result<(), WadError> {
         let buffer = buffer.into();
 
         // WAD informations
         // Check if the WAD is valid
         if buffer.len() < 12 {
-            return Err(WadError::Load(
-                "The file size is too small."
-            ))
+            return Err(WadError::Load("The file size is too small."));
         }
 
         self.info = WadInfo::from(&buffer[0..12]);
-        
+
         if self.info.kind == WadKind::Unknown {
-            return Err(WadError::Type(
-                "The file is not a WAD file."
-            ))
+            return Err(WadError::Type("The file is not a WAD file."));
         }
 
         self.src = buffer;
 
         // Parse lumps
-        self.dir.parse(
-            self.info,
-            &self.src
-        );
-
-        Ok(())
+        self.dir.parse(self.info, &self.src)
     }
 
     /// Load file content from a path
     pub fn load_from_file<P: Into<PathWrap<&'static str>>>(
         &mut self,
-        path: P
+        path: P,
     ) -> Result<(), WadError> {
         let path = path.into();
         let buffer: Vec<u8> = path.try_into()?;
@@ -217,23 +198,20 @@ impl Wad {
     }
 
     /// Reparse the WAD
-    /// 
+    ///
     /// Could be load after changing the palette index
     pub fn reload(&mut self) -> Result<(), WadError> {
         self.load(self.src.clone())
     }
 
     /// Build the entire WAD buffer based on its abstraction and `self.src`
-    /// 
+    ///
     /// This method avoids us to write the changes directly on `self.src`,
     /// we are able to update or remove lumps without any problems.
-    /// 
+    ///
     /// It will be called each time the user will save the entire WAD buffer
     fn dest(&mut self) -> Vec<u8> {
-        let mut output = WadOutput::new(
-            self.info,
-            &self.dir,
-        );
+        let mut output = WadOutput::new(self.info, &self.dir);
 
         output.build();
         output.buffer()
@@ -247,45 +225,31 @@ impl Wad {
 
 impl WadOp for Wad {
     fn dump(&self) {
-        self.dir.callback_lumps(
-            self.re_name.clone(),
-            | lump | println!("{}", lump)
-        );
+        self.dir
+            .callback_lumps(self.re_name.clone(), |lump| println!("{}", lump));
     }
 
     fn save_lumps<P: AsRef<Path>>(&self, dir: P) {
         let dir = dir.as_ref().to_str().unwrap();
 
-        self.dir.callback_lumps(
-            self.re_name.clone(),
-            | lump | lump.save(dir)
-        );
+        self.dir
+            .callback_lumps(self.re_name.clone(), |lump| lump.save(dir));
     }
 
     fn save_lumps_raw<P: AsRef<Path>>(&self, dir: P) {
         let dir = dir.as_ref().to_str().unwrap();
-        
-        self.dir.callback_lumps(
-            self.re_name.clone(),
-            | lump | {
-                let data = lump.data();
-                let path = format!(
-                    "{}/{}.raw",
-                    dir,
-                    data.metadata.id_ascii()
-                );
-                
-                fs::write(
-                    path,
-                    data.buffer
-                ).unwrap_or_default();
-            }
-        );
+
+        self.dir.callback_lumps(self.re_name.clone(), |lump| {
+            let data = lump.data();
+            let path = format!("{}/{}.raw", dir, data.metadata.id_ascii());
+
+            fs::write(path, data.buffer).unwrap_or_default();
+        });
     }
 
     fn remove_by_name(&mut self, re: &str) -> Result<(), Error> {
         let removed = self.dir.remove_lumps(Regex::new(re)?);
-        
+
         self.info.num_lumps -= removed as i32;
 
         Ok(())
@@ -293,61 +257,51 @@ impl WadOp for Wad {
 
     fn remove(&mut self) {
         let removed = self.dir.remove_lumps(self.re_name.clone());
-        
+
         self.info.num_lumps -= removed as i32;
     }
 
     fn save<P: AsRef<Path>>(&mut self, path: P) {
-        fs::write(
-            path,
-            self.dest()
-        ).unwrap_or_default();
+        fs::write(path, self.dest()).unwrap_or_default();
     }
 
     fn update_lumps_raw(&mut self, buffer: &Vec<u8>) {
-        self.dir.callback_lumps_mut(
-            self.re_name.clone(),
-            | lump | {
-                let mut data = lump.data();
+        self.dir.callback_lumps_mut(self.re_name.clone(), |lump| {
+            let mut data = lump.data();
 
-                data.buffer = buffer.to_vec();
-                data.metadata.size = data.buffer.len() as i32;
+            data.buffer = buffer.to_vec();
+            data.metadata.size = data.buffer.len() as i32;
 
-                lump.set_data(data);
-            }
-        );
+            lump.set_data(data);
+        });
     }
 
     fn update_lumps(&mut self, buffer: &Vec<u8>) {
         // TODO: update the metadata in the lump (size)
 
-        self.dir.callback_lumps_mut(
-            self.re_name.clone(),
-            | lump | lump.update(buffer)
-        );
+        self.dir
+            .callback_lumps_mut(self.re_name.clone(), |lump| lump.update(buffer));
     }
 
     fn add_lump_raw(&mut self, add: LumpAdd) -> Result<(), WadError> {
         // A little bit hacky, it is just a way to get an unique position
         // it is useful for building a new WAD
-        
-        let pos = self.dir.lumps
+
+        let pos = self
+            .dir
+            .lumps
             .iter()
-            .map(| lump | lump.data().metadata.pos)
+            .map(|lump| lump.data().metadata.pos)
             .max()
             .unwrap_or(1);
 
-        let metadata = LumpInfo::new(
-            pos + 1,
-            add.buffer.len() as i32,
-            add.name
-        );
+        let metadata = LumpInfo::new(pos + 1, add.buffer.len() as i32, add.name);
         let unknown = Unknown {
             data: LumpData {
                 buffer: add.buffer.clone(),
                 metadata,
-                kind: LumpKind::Unknown
-            }
+                kind: LumpKind::Unknown,
+            },
         };
 
         // Lump informations

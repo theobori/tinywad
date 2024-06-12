@@ -1,17 +1,15 @@
 /// Representing a RGB color value
-/// 
+///
 /// 4 bytes only
 #[derive(Clone, Copy)]
 pub struct ColorRgb {
     /// Color value
-    color: u32
+    color: u32,
 }
 
 impl Default for ColorRgb {
     fn default() -> Self {
-        Self {
-            color: 0
-        }
+        Self { color: 0 }
     }
 }
 
@@ -24,9 +22,7 @@ impl From<(u8, u8, u8, u8)> for ColorRgb {
         value = (value << 8) | (b as u32);
         value = (value << 8) | (a as u32);
 
-        Self {
-            color: value
-        }
+        Self { color: value }
     }
 }
 
@@ -50,18 +46,9 @@ impl Into<(u8, u8, u8, u8)> for ColorRgb {
 impl From<&[u8]> for ColorRgb {
     fn from(bytes: &[u8]) -> Self {
         if bytes.len() == 4 {
-            Self::from((
-                bytes[0],
-                bytes[1],
-                bytes[2],
-                bytes[3]
-            ))
+            Self::from((bytes[0], bytes[1], bytes[2], bytes[3]))
         } else if bytes.len() == 3 {
-            Self::from((
-                bytes[0],
-                bytes[1],
-                bytes[2]
-            ))
+            Self::from((bytes[0], bytes[1], bytes[2]))
         } else {
             Self::default()
         }

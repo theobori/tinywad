@@ -1,16 +1,9 @@
 use std::{
-    fmt::{
-        Display,
-        Result
-    },
+    fmt::{Display, Error},
     path::Path,
 };
 
-use crate::{
-    models::lump::Lump,
-    lump::LumpData,
-    lumps::palette::Palettes,
-};
+use crate::{error::WadError, lump::LumpData, lumps::palette::Palettes, models::lump::Lump};
 
 extern crate image;
 
@@ -29,24 +22,21 @@ pub struct Flat {
     /// Attached palettes
     palettes: Palettes,
     /// Lump data
-    data: LumpData
+    data: LumpData,
 }
 
 impl Flat {
-    pub fn new(
-        palettes: Palettes,
-        data: LumpData
-    ) -> Self {
+    pub fn new(palettes: Palettes, data: LumpData) -> Self {
         Self {
             pixels: Vec::new(),
             palettes,
-            data
+            data,
         }
     }
 }
 
 impl Display for Flat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), Error> {
         write!(
             f,
             "Name: {}, Size: {}, Offset: {}, Width: {}, Height: {}",
@@ -60,37 +50,37 @@ impl Display for Flat {
 }
 
 impl Lump for Flat {
-    fn parse(&mut self) {
+    fn parse(&mut self) -> Result<(), WadError> {
         let buffer = &*self.data.buffer;
-        let palette = self.palettes
-            .palette()
-            .unwrap();
-        
+        let palette = match self.palettes.palette() {
+            Some(value) => value,
+            None => return Err(WadError::Parse(String::from("Invalid palette"))),
+        };
+
         for i in 0..FLAT_SIZE {
             let byte = buffer[i];
             let (r, g, b, _) = palette[byte as usize].into();
-        
+
             self.pixels.push(r);
             self.pixels.push(g);
             self.pixels.push(b);
             self.pixels.push(255);
         }
-    }        
+
+        Ok(())
+    }
 
     fn save(&self, dir: &str) {
-        let path = format!(
-            "{}/{}.png",
-            dir,
-            self.data.metadata.name_ascii()
-        );
+        let path = format!("{}/{}.png", dir, self.data.metadata.name_ascii());
 
         image::save_buffer(
             Path::new(&path),
             &self.pixels,
             FLAT_W as u32,
             FLAT_H as u32,
-            image::ColorType::Rgba8
-        ).unwrap();
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
     }
 
     fn data(&self) -> LumpData {

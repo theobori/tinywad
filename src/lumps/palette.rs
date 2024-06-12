@@ -1,13 +1,9 @@
-use std::{fmt::{
-    Display,
-    Result
-}, path::Path};
-
-use crate::{
-    models::lump::Lump,
-    lump::LumpData,
-    properties::color::ColorRgb
+use std::{
+    fmt::{Display, Error},
+    path::Path,
 };
+
+use crate::{error::WadError, lump::LumpData, models::lump::Lump, properties::color::ColorRgb};
 
 extern crate image;
 
@@ -27,7 +23,7 @@ pub struct Palettes {
     /// Get the `n` palette
     n: usize,
     /// Raw file buffer
-    data: LumpData
+    data: LumpData,
 }
 
 impl Default for Palettes {
@@ -35,7 +31,7 @@ impl Default for Palettes {
         Self {
             palettes: Vec::new(),
             n: 0,
-            data: LumpData::default()
+            data: LumpData::default(),
         }
     }
 }
@@ -62,7 +58,7 @@ impl Palettes {
         if palette.is_none() {
             return Vec::new();
         }
-        
+
         let mut ret = Vec::new();
 
         for rgb in palette.unwrap() {
@@ -74,7 +70,7 @@ impl Palettes {
             ret.push(a);
         }
 
-        ret            
+        ret
     }
 
     /// Set the lump data
@@ -89,7 +85,7 @@ impl Palettes {
 }
 
 impl Display for Palettes {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), Error> {
         let amount = self.data.metadata.size as usize / PALETTE_SIZE;
 
         write!(
@@ -104,7 +100,7 @@ impl Display for Palettes {
 }
 
 impl Lump for Palettes {
-    fn parse(&mut self) {
+    fn parse(&mut self) -> Result<(), WadError> {
         let buffer = &*self.data.buffer;
         // Reset the vector if the method is called multiple time by mistake
         self.palettes.clear();
@@ -115,28 +111,20 @@ impl Lump for Palettes {
             for pixel_pos in (0..PALETTE_SIZE).step_by(PIXEL_SIZE) {
                 let pos = i + pixel_pos;
                 let bytes = &buffer[pos..pos + PIXEL_SIZE];
-                
-                palette.push(
-                    ColorRgb::from((
-                        bytes[0],
-                        bytes[1],
-                        bytes[2]
-                    )
-                ));
+
+                palette.push(ColorRgb::from((bytes[0], bytes[1], bytes[2])));
             }
 
             self.palettes.push(palette);
         }
+
+        Ok(())
     }
 
     fn save(&self, dir: &str) {
         // Extract every palette as a single file
         for pal_index in 0..self.palettes.len() {
-            let path = format!(
-                "{}/PAL_{}.png",
-                dir,
-                pal_index
-            );
+            let path = format!("{}/PAL_{}.png", dir, pal_index);
 
             // Save the palette
             image::save_buffer(
@@ -144,8 +132,9 @@ impl Lump for Palettes {
                 &self.palette_as_bytes(pal_index),
                 16,
                 16,
-                image::ColorType::Rgba8
-            ).unwrap();   
+                image::ColorType::Rgba8,
+            )
+            .unwrap();
         }
     }
 

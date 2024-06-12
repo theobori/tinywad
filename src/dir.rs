@@ -1,21 +1,15 @@
-use std::collections::{LinkedList, HashMap};
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::{HashMap, LinkedList};
 
 use crate::{
-    models::lump::Lump,
-    lump::{
-        LumpKind,
-        LumpInfo,
-        LumpData, LumpState, LumpAddKind
-    },
+    error::WadError,
+    lump::{LumpAddKind, LumpData, LumpInfo, LumpKind, LumpState},
     lumps::{
-        patch::DoomImage,
-        flat::Flat,
-        unknown::Unknown,
-        palette::Palettes,
-        music::lump::DoomMusic
-    }, wad::WadInfo, error::WadError
+        flat::Flat, music::lump::DoomMusic, palette::Palettes, patch::DoomImage, unknown::Unknown,
+    },
+    models::lump::Lump,
+    wad::WadInfo,
 };
 
 lazy_static! {
@@ -41,7 +35,7 @@ pub struct LumpsDirectory {
     /// Palette
     pub pal: Palettes,
     /// Used during the directory parsing
-    marker: LinkedList<LumpKind>
+    marker: LinkedList<LumpKind>,
 }
 
 impl Default for LumpsDirectory {
@@ -49,7 +43,8 @@ impl Default for LumpsDirectory {
         Self {
             lumps: Vec::new(),
             pal: Palettes::default(),
-            marker: LinkedList::new() }
+            marker: LinkedList::new(),
+        }
     }
 }
 
@@ -58,14 +53,10 @@ impl LumpsDirectory {
         Self::default()
     }
     /// Iterate then calling a function on the matching lumps
-    pub fn callback_lumps<F: Fn(&Box<dyn Lump>)>(
-        &self,
-        re: Regex,
-        f: F
-    ) {
+    pub fn callback_lumps<F: Fn(&Box<dyn Lump>)>(&self, re: Regex, f: F) {
         for lump in self.lumps.iter() {
             let name = lump.data().metadata.name_ascii();
-            
+
             if re.is_match(&name) {
                 f(lump);
             }
@@ -73,14 +64,10 @@ impl LumpsDirectory {
     }
 
     /// Iterate then calling a function on the matching mutable lumps
-    pub fn callback_lumps_mut<F: Fn(&mut Box<dyn Lump>)>(
-        &mut self,
-        re: Regex,
-        f: F
-    ) {
+    pub fn callback_lumps_mut<F: Fn(&mut Box<dyn Lump>)>(&mut self, re: Regex, f: F) {
         for lump in self.lumps.iter_mut() {
             let name = lump.data().metadata.name_ascii();
-            
+
             if re.is_match(&name) {
                 f(lump);
             }
@@ -114,7 +101,7 @@ impl LumpsDirectory {
                 ret.push(i);
             }
         }
-        
+
         ret
     }
 
@@ -122,35 +109,32 @@ impl LumpsDirectory {
     pub fn index(&self, name: &str) -> Option<usize> {
         for (i, lump) in self.lumps.iter().enumerate() {
             if &*lump.data().metadata.id_ascii() == name {
-                return Some(i)
+                return Some(i);
             }
         }
-        
+
         None
     }
 
     /// Find an index depending of the kind `kind`
-    /// 
+    ///
     /// Mainly used for new lumps
-    pub fn index_from_kind(
-        &self,
-        kind: LumpAddKind
-    ) -> Result<usize, WadError> {
+    pub fn index_from_kind(&self, kind: LumpAddKind) -> Result<usize, WadError> {
         let ret = match kind {
             LumpAddKind::After(name) => {
                 let i = self.index(name);
 
                 if i.is_none() {
-                    return Err(WadError::InvalidLumpName)
+                    return Err(WadError::InvalidLumpName);
                 }
 
                 i.unwrap() + 1
-            },
+            }
             LumpAddKind::Before(name) => {
                 let i = self.index(name);
 
                 if i.is_none() {
-                    return Err(WadError::InvalidLumpName)
+                    return Err(WadError::InvalidLumpName);
                 }
 
                 let ret = i.unwrap();
@@ -160,7 +144,7 @@ impl LumpsDirectory {
                 } else {
                     ret - 1
                 }
-            },
+            }
             LumpAddKind::Front => 0,
             LumpAddKind::Back => self.lumps.len(),
         };
@@ -173,14 +157,10 @@ impl LumpsDirectory {
         let index = self.index(name);
 
         if index.is_none() {
-            return None
+            return None;
         }
 
-        Some(
-            self.lumps
-                .get(index.unwrap())
-                .unwrap()
-        )
+        Some(self.lumps.get(index.unwrap()).unwrap())
     }
 
     /// Set the palette index
@@ -193,11 +173,11 @@ impl LumpsDirectory {
         if RE_F_START.is_match(name) {
             self.marker.push_back(LumpKind::Flat);
         }
-        
+
         if RE_S_START.is_match(name) {
             self.marker.push_back(LumpKind::Patch);
-        } 
-        
+        }
+
         if RE_F_END.is_match(name) {
             self.marker.pop_back();
         }
@@ -207,16 +187,11 @@ impl LumpsDirectory {
         }
     }
 
-    fn pop_marker(
-        &mut self,
-        metadata: &LumpInfo,
-        name: &str,
-        mut data: LumpData
-    ) -> Box<dyn Lump> {
+    fn pop_marker(&mut self, metadata: &LumpInfo, name: &str, mut data: LumpData) -> Box<dyn Lump> {
         self.set_marker(name);
 
         if metadata.size <= 0 || self.marker.len() <= 0 {
-            return Box::new(Unknown { data })
+            return Box::new(Unknown { data });
         }
 
         let last = self.marker.back().unwrap();
@@ -225,37 +200,29 @@ impl LumpsDirectory {
             LumpKind::Patch => {
                 data.kind = LumpKind::Patch;
 
-                Box::new(DoomImage::new(
-                    self.pal.clone(),
-                    data
-                ))
-            },
+                Box::new(DoomImage::new(self.pal.clone(), data))
+            }
             LumpKind::Flat => {
                 data.kind = LumpKind::Flat;
-                Box::new(Flat::new(
-                    self.pal.clone(),
-                    data
-                ))
-            },
-            _ => Box::new(Unknown { data })
+                Box::new(Flat::new(self.pal.clone(), data))
+            }
+            _ => Box::new(Unknown { data }),
         }
     }
 
     /// Iterating over the directory and filling `self.lumps`
-    pub fn parse(&mut self, info: WadInfo, buffer: &Vec<u8>) {
+    pub fn parse(&mut self, info: WadInfo, buffer: &Vec<u8>) -> Result<(), WadError> {
         self.lumps.clear();
         self.marker.clear();
-    
+
         // Preventing multiple names
         let mut names: HashMap<String, usize> = HashMap::new();
 
         for lump_num in 0..(info.num_lumps as usize) {
             let index = (info.dir_pos as usize) + (lump_num * 16);
-            
+
             // Get lump informations then data
-            let mut metadata = LumpInfo::from(
-                &buffer[index..index + 16]
-            );
+            let mut metadata = LumpInfo::from(&buffer[index..index + 16]);
             let pos = metadata.pos as usize;
             let size = metadata.size as usize;
             let name = metadata.name_ascii();
@@ -266,12 +233,11 @@ impl LumpsDirectory {
                     names.insert(name.clone(), value);
 
                     format!("{}{}", name, value)
-                },
+                }
                 None => {
                     names.insert(name.clone(), 0);
-                    
-                    name
-                    .clone()
+
+                    name.clone()
                 }
             };
 
@@ -283,42 +249,37 @@ impl LumpsDirectory {
                 metadata,
                 kind: LumpKind::Unknown,
             };
-            
+
             let mut lump: Box<dyn Lump> = match &*name {
                 "PLAYPAL" => {
                     data.kind = LumpKind::Palette;
-                    
+
                     self.pal.set_data(data);
                     // Special case that must be parsed before copied
-                    self.pal.parse();
-                    
+                    self.pal.parse()?;
+
                     Box::new(self.pal.clone())
-                },
+                }
 
                 "F_START" => {
                     self.marker.push_back(LumpKind::Flat);
 
                     Box::new(Unknown { data })
-                },
+                }
 
                 "S_START" | "SS_START" => {
                     self.marker.push_back(LumpKind::Patch);
 
                     Box::new(Unknown { data })
-                },
+                }
 
                 "F_END" | "S_END" | "SS_END" => {
                     self.marker.pop_back();
 
                     Box::new(Unknown { data })
-                },
+                }
 
-                "TITLEPIC" => {
-                    Box::new(DoomImage::new(
-                        self.pal.clone(),
-                        data
-                    ))
-                },
+                "TITLEPIC" => Box::new(DoomImage::new(self.pal.clone(), data)),
 
                 _ => {
                     if RE_DOOM_MUSIC.is_match(&name) {
@@ -330,10 +291,12 @@ impl LumpsDirectory {
             };
 
             // Fetch and decode data from the WAD buffer
-            lump.parse();
+            lump.parse()?;
 
             // Add the lump to the hashmap
             self.lumps.push(lump);
         }
+
+        Ok(())
     }
 }

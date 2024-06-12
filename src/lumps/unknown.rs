@@ -1,12 +1,6 @@
-use std::fmt::{
-    Display,
-    Result
-};
+use std::fmt::{Display, Error};
 
-use crate::{
-    models::lump::Lump,
-    lump::LumpData
-};
+use crate::{error::WadError, lump::LumpData, models::lump::Lump};
 
 /// Just an unknown or unimplemented lump
 #[derive(Clone)]
@@ -16,7 +10,7 @@ pub struct Unknown {
 }
 
 impl Display for Unknown {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), Error> {
         write!(
             f,
             "Name: {}, Size: {}, Offset: {}",
@@ -28,13 +22,11 @@ impl Display for Unknown {
 }
 
 impl Lump for Unknown {
-    fn parse(&mut self) {
-
+    fn parse(&mut self) -> Result<(), WadError> {
+        Ok(())
     }
 
-    fn save(&self, _dir: &str) {
-    
-    }
+    fn save(&self, _dir: &str) {}
 
     fn data(&self) -> crate::lump::LumpData {
         self.data.clone()
@@ -44,7 +36,5 @@ impl Lump for Unknown {
         self.data = data;
     }
 
-    fn update(&mut self, _buffer: &Vec<u8>) {
-        
-    }
+    fn update(&mut self, _buffer: &Vec<u8>) {}
 }

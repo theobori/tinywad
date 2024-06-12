@@ -3,27 +3,19 @@ use std::collections::HashMap;
 use crate::error::WadError;
 
 use super::mus::{
-    Mus,
-    MetaEvent,
-    MusReleaseNote,
-    MusPlayNote,
-    MusSystemEvent,
-    MusController,
-    controller_as_midi
+    controller_as_midi, MetaEvent, Mus, MusController, MusPlayNote, MusReleaseNote, MusSystemEvent,
 };
 
 /// MID file controller
 #[derive(Clone)]
 pub struct Midi {
     /// Representing the raw buffer
-    buffer: Vec<u8>
+    buffer: Vec<u8>,
 }
 
 impl Default for Midi {
     fn default() -> Self {
-        Self {
-            buffer: Vec::new()
-        }
+        Self { buffer: Vec::new() }
     }
 }
 
@@ -43,22 +35,11 @@ impl Midi {
 
         // Track (only one) block
         self.buffer.append(&mut vec![0x4d, 0x54, 0x72, 0x6b]);
-        self.buffer.append(
-            &mut u32::to_be_bytes(0).to_vec()
-        );
+        self.buffer.append(&mut u32::to_be_bytes(0).to_vec());
 
         // Tempo
-        self.buffer.append(
-            &mut vec![
-                0,
-                0xff,
-                0x51,
-                3,
-                0x0f,
-                0x42,
-                0x40
-            ]
-        );
+        self.buffer
+            .append(&mut vec![0, 0xff, 0x51, 3, 0x0f, 0x42, 0x40]);
     }
 
     /// Borrows a buffer copy
@@ -84,15 +65,15 @@ impl TryFrom<&Mus> for Midi {
         let mut midi = Midi::new();
         let mut delay: usize = 0;
         let mut channels: HashMap<u8, u8> = HashMap::new();
-        
+
         midi.write_metadata();
-        
+
         // File buffer
-        let midi_buffer= midi.buffer_mut();
+        let midi_buffer = midi.buffer_mut();
         // MUS Events buffer
-        let event_buffer= value.event_buffer();
+        let event_buffer = value.event_buffer();
         let mut i = 0;
-        
+
         while i < value.header().song_len as usize {
             // Read the MUS event
             let meta = MetaEvent(event_buffer[i]);
@@ -118,27 +99,18 @@ impl TryFrom<&Mus> for Midi {
 
             match meta.event_type() {
                 0 => {
-                    // println!("MusReleaseNote");
                     let event = MusReleaseNote(event_buffer[i]);
-                    let volume = channels
-                        .get(&channel)
-                        .unwrap_or(&100);
+                    let volume = channels.get(&channel).unwrap_or(&100);
 
-                    // println!("volume {}", *volume);
                     midi_buffer.push(0x80 | channel);
                     midi_buffer.push(event.note());
                     midi_buffer.push(*volume);
-                },
+                }
                 1 => {
-                    let event = MusPlayNote(
-                        event_buffer[i],
-                        event_buffer[i + 1]
-                    );
-    
+                    let event = MusPlayNote(event_buffer[i], event_buffer[i + 1]);
+
                     let mut default_volume = 100;
-                    let volume = channels
-                        .get_mut(&channel)
-                        .unwrap_or(&mut default_volume);
+                    let volume = channels.get_mut(&channel).unwrap_or(&mut default_volume);
 
                     if event.is_volume() {
                         *volume = event.volume();
@@ -151,12 +123,12 @@ impl TryFrom<&Mus> for Midi {
                     if event.is_volume() {
                         i += 1;
                     }
-                },
+                }
                 2 => {
                     midi_buffer.push(0xe0 | channel);
                     midi_buffer.push((event_buffer[i] << 7) & 0x80);
                     midi_buffer.push(event_buffer[i] >> 1);
-                },
+                }
                 3 => {
                     let event = MusSystemEvent(event_buffer[i]);
                     let controller = controller_as_midi(event.controller())?;
@@ -165,13 +137,9 @@ impl TryFrom<&Mus> for Midi {
                     midi_buffer.push(controller);
                     // Vritual controller value
                     midi_buffer.push(0);
-                    
-                },
+                }
                 4 => {
-                    let event = MusController(
-                        event_buffer[i],
-                        event_buffer[i + 1]
-                    );
+                    let event = MusController(event_buffer[i], event_buffer[i + 1]);
                     let controller = controller_as_midi(event.controller())?;
 
                     if event.controller() == 0 {
@@ -184,17 +152,15 @@ impl TryFrom<&Mus> for Midi {
                         midi_buffer.push(event.value());
                     }
 
-                    let volume = channels
-                        .get(&channel)
-                        .unwrap_or(&0);
+                    let volume = channels.get(&channel).unwrap_or(&0);
 
                     if event.controller() == 3 {
-                        channels.insert(channel,*volume);
+                        channels.insert(channel, *volume);
                     }
 
                     i += 1;
-                },
-                5 => {},
+                }
+                5 => {}
                 6 => {
                     midi_buffer.push(0xff);
                     midi_buffer.push(0x2f);
@@ -207,11 +173,11 @@ impl TryFrom<&Mus> for Midi {
 
             if meta.last() == false {
                 delay = 0;
-                continue
+                continue;
             }
 
             let mut byte = 0x80;
-            
+
             let mut tmp_delay = 0;
             while byte & 0x80 == 0x80 {
                 byte = event_buffer[i];

@@ -5,6 +5,8 @@ pub enum WadError {
     #[error("Unable to read this file: {0}")]
     Read(String),
     #[error("Wrong WAD file type: {0}")]
+    Parse(String),
+    #[error("Unable to parse: {0}")]
     Type(&'static str),
     #[error("Unable to load the program: {0}")]
     Load(&'static str),
@@ -21,5 +23,5 @@ pub enum WadError {
     #[error("Invalid lump")]
     InvalidLump,
     #[error("Unable to use this API")]
-    Unknown
+    Unknown,
 }

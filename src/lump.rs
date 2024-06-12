@@ -1,12 +1,12 @@
 /// Lumps kind implementing the `Lump` trait
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Debug)]
 pub enum LumpKind {
     Flat,
     Sound,
     Patch,
     Palette,
     /// Unidentified lump
-    Unknown
+    Unknown,
 }
 
 impl Default for LumpKind {
@@ -16,25 +16,25 @@ impl Default for LumpKind {
 }
 
 /// Represents the lump state
-/// 
+///
 /// It permits to organize the WAD operations (from `WadOp`)
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum LumpState {
     Default,
     Deleted,
-    Updated
+    Updated,
 }
 
 impl LumpState {
     /// Get the alive lumps amount
-    pub fn is_alive(&self) -> bool{
+    pub fn is_alive(&self) -> bool {
         *self != Self::Deleted
     }
 }
 
 /// Represents the lump official metadata (16 bytes)
 /// and the WAD operations state (from `WadOp`)
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct LumpInfo {
     /// The lump start position in the file buffer (4 bytes)
     pub pos: i32,
@@ -43,11 +43,11 @@ pub struct LumpInfo {
     /// Lump name, it only contains in theory [A-Z][0-9] (8 bytes)
     pub name: [u8; 8],
     /// Lumps name are not unique but we want to extract them into files
-    /// 
+    ///
     /// The attribute acts like an unique ID
     pub id: [u8; 12],
     /// Lump state
-    pub state: LumpState
+    pub state: LumpState,
 }
 
 impl Default for LumpInfo {
@@ -57,18 +57,13 @@ impl Default for LumpInfo {
             size: 0,
             name: [0x00; 8],
             id: [0x00; 12],
-            state: LumpState::Default
+            state: LumpState::Default,
         }
     }
 }
 
 impl LumpInfo {
-    pub fn new(
-        pos: i32,
-        size: i32,
-        name: [u8; 8]
-    ) -> Self {
-
+    pub fn new(pos: i32, size: i32, name: [u8; 8]) -> Self {
         let mut id = [0x00; 12];
 
         for i in 0..name.len() {
@@ -80,18 +75,17 @@ impl LumpInfo {
             size,
             name,
             id,
-            state: LumpState::Default
+            state: LumpState::Default,
         }
     }
     /// Filter `value` with ascii characters
     fn ascii(value: String) -> String {
-        value.chars().filter(
-            | c | {
-                c.is_ascii_alphanumeric() || c.is_ascii_punctuation()
-            }
-        ).collect()
+        value
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_punctuation())
+            .collect()
     }
-    
+
     /// Get the lump name as String
     pub fn name(&self) -> String {
         String::from_utf8(self.name.to_vec()).unwrap()
@@ -113,42 +107,30 @@ impl LumpInfo {
     }
 
     /// Returns if the metadata is overwritable
-    /// 
+    ///
     /// Because specials lumps cannot be overwritten
     /// when we build a new WAD file (output)
     /// like the separators
     pub fn is_overwritable(&self) -> bool {
-        self.state.is_alive() == true &&
-        self.pos > 0 &&
-        self.size > 0
+        self.state.is_alive() == true && self.pos > 0 && self.size > 0
     }
 }
 
 impl From<&[u8]> for LumpInfo {
     fn from(bytes: &[u8]) -> Self {
-        let name: [u8; 8] = bytes[8..16]
-            .try_into()
-            .unwrap_or_default();
+        let name: [u8; 8] = bytes[8..16].try_into().unwrap_or_default();
         let mut id = [0x00; 12];
 
         for i in 0..name.len() {
-            id[i] = name [i];
+            id[i] = name[i];
         }
 
         Self {
-            pos: i32::from_le_bytes(
-                bytes[0..4]
-                    .try_into()
-                    .unwrap_or_default()
-            ),
-            size: i32::from_le_bytes(
-                bytes[4..8]
-                    .try_into()
-                    .unwrap_or_default()
-            ),
+            pos: i32::from_le_bytes(bytes[0..4].try_into().unwrap_or_default()),
+            size: i32::from_le_bytes(bytes[4..8].try_into().unwrap_or_default()),
             name,
             id,
-            state: LumpState::Default
+            state: LumpState::Default,
         }
     }
 }
@@ -166,14 +148,14 @@ impl Into<Vec<u8>> for LumpInfo {
 }
 
 /// Representing the whole lump buffer as a struct
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LumpData {
     /// The raw buffer
     pub buffer: Vec<u8>,
     /// The lump metadata (16 bytes header)
     pub metadata: LumpInfo,
     /// The lump kind
-    pub kind: LumpKind
+    pub kind: LumpKind,
 }
 
 impl Default for LumpData {
@@ -181,7 +163,7 @@ impl Default for LumpData {
         Self {
             buffer: Default::default(),
             metadata: Default::default(),
-            kind: LumpKind::Unknown
+            kind: LumpKind::Unknown,
         }
     }
 }
@@ -190,16 +172,8 @@ impl Into<Vec<u8>> for LumpData {
     fn into(self) -> Vec<u8> {
         let mut ret = self.buffer;
 
-        ret.append(
-            &mut self.metadata.pos
-                .to_be_bytes()
-                .to_vec()
-        );
-        ret.append(
-            &mut self.metadata.size
-                .to_be_bytes()
-                .to_vec()
-        );
+        ret.append(&mut self.metadata.pos.to_be_bytes().to_vec());
+        ret.append(&mut self.metadata.size.to_be_bytes().to_vec());
         ret.append(&mut self.metadata.name.to_vec());
 
         ret
@@ -213,11 +187,11 @@ pub enum LumpAddKind {
     /// Before a lump (lump name)
     Before(&'static str),
     /// It add the lump to the start
-    /// 
+    ///
     /// *Not recommended for an IWAD*
     Front,
     /// Add the lump to the end
-    Back
+    Back,
 }
 
 /// Metadata for an adding lump operation
@@ -227,15 +201,11 @@ pub struct LumpAdd<'a> {
     /// Lump raw buffer
     pub buffer: &'a Vec<u8>,
     /// Lump name
-    pub name: [u8; 8]
+    pub name: [u8; 8],
 }
 
 impl<'a> LumpAdd<'a> {
-    pub fn new(
-        kind: LumpAddKind,
-        buffer: &'a Vec<u8>,
-        name: &str
-    ) -> Self {
+    pub fn new(kind: LumpAddKind, buffer: &'a Vec<u8>, name: &str) -> Self {
         let mut array = [0; 8];
         let mut i = 0;
         let bytes = name.as_bytes();
@@ -249,7 +219,7 @@ impl<'a> LumpAdd<'a> {
         Self {
             kind,
             buffer,
-            name: array
+            name: array,
         }
     }
 }

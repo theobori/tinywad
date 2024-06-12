@@ -1,9 +1,5 @@
-use std::{
-    path::Path,
-    fs::File,
-    io::Read
-};
 use crate::error::WadError;
+use std::{fs::File, io::Read, path::Path};
 
 pub struct PathWrap<P: AsRef<Path>>(P);
 
@@ -20,13 +16,13 @@ impl TryFrom<PathWrap<&str>> for Vec<u8> {
         match File::open(value.0) {
             Ok(mut file) => {
                 let mut data = Vec::<u8>::new();
-    
+
                 match file.read_to_end(data.as_mut()) {
                     Ok(_) => Ok(data),
-                    Err(e) => Err(WadError::Read(e.to_string()))
+                    Err(e) => Err(WadError::Read(e.to_string())),
                 }
-            },
-            Err(e) => Err(WadError::Read(e.to_string()))
+            }
+            Err(e) => Err(WadError::Read(e.to_string())),
         }
     }
 }

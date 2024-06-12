@@ -4,7 +4,7 @@ use crate::error::WadError;
 pub const MUS_MAGIC: [u8; 4] = [0x4d, 0x55, 0x53, 0x1a];
 
 /// Represents the Music header
-/// 
+///
 /// Every `u16` are in little-endianess
 #[derive(Clone, Debug)]
 pub struct MusHeader {
@@ -23,7 +23,7 @@ pub struct MusHeader {
     /// Reserved bytes
     pub dummy: u16,
     /// Variable-length part starts here
-    pub instruments: Vec<u16>
+    pub instruments: Vec<u16>,
 }
 
 impl Default for MusHeader {
@@ -36,7 +36,7 @@ impl Default for MusHeader {
             sec_channels: 0,
             instr_count: 0,
             dummy: 0,
-            instruments: Vec::new()
+            instruments: Vec::new(),
         }
     }
 }
@@ -44,39 +44,13 @@ impl Default for MusHeader {
 impl From<&[u8]> for MusHeader {
     fn from(value: &[u8]) -> Self {
         Self {
-            magic: value[0..4]
-                .try_into()
-                .unwrap_or_default(),
-            song_len: u16::from_le_bytes(
-                value[4..6]
-                    .try_into()
-                    .unwrap_or_default()
-            ),
-            song_start: u16::from_le_bytes(
-                value[6..8]
-                    .try_into()
-                    .unwrap_or_default()
-                ),
-            channels: u16::from_le_bytes(
-                value[8..10]
-                    .try_into()
-                    .unwrap_or_default()
-                ),
-            sec_channels: u16::from_le_bytes(
-                value[10..12]
-                    .try_into()
-                    .unwrap_or_default()
-                ),
-            instr_count: u16::from_le_bytes(
-                value[12..14]
-                    .try_into()
-                    .unwrap_or_default()
-                ),
-            dummy: u16::from_le_bytes(
-                value[14..16]
-                    .try_into()
-                    .unwrap_or_default()
-                ),
+            magic: value[0..4].try_into().unwrap_or_default(),
+            song_len: u16::from_le_bytes(value[4..6].try_into().unwrap_or_default()),
+            song_start: u16::from_le_bytes(value[6..8].try_into().unwrap_or_default()),
+            channels: u16::from_le_bytes(value[8..10].try_into().unwrap_or_default()),
+            sec_channels: u16::from_le_bytes(value[10..12].try_into().unwrap_or_default()),
+            instr_count: u16::from_le_bytes(value[12..14].try_into().unwrap_or_default()),
+            dummy: u16::from_le_bytes(value[14..16].try_into().unwrap_or_default()),
             instruments: Vec::new(),
         }
     }
@@ -87,7 +61,7 @@ pub struct MetaEvent(pub u8);
 
 impl MetaEvent {
     /// It is set when the event is followed by a delay
-    pub fn last (&self) -> bool {
+    pub fn last(&self) -> bool {
         self.0 & 0x80 != 0
     }
 
@@ -103,10 +77,10 @@ impl MetaEvent {
 }
 
 /// Event 0
-/// 
+///
 /// This event stops the given note playing on the channel
 /// specified by the event
-/// 
+///
 /// Other notes on the channel are left playing.
 pub struct MusReleaseNote(pub u8);
 
@@ -118,7 +92,7 @@ impl MusReleaseNote {
 }
 
 /// Event 1
-/// 
+///
 /// Play the note
 pub struct MusPlayNote(pub u8, pub u8);
 
@@ -130,7 +104,7 @@ impl MusPlayNote {
 
     /// If the volume flag is set, it will use the
     /// volume stored in the next byte
-    /// 
+    ///
     /// Otherwise, it will use the volume of the previous note
     /// on the channel
     pub fn is_volume(&self) -> bool {
@@ -144,10 +118,10 @@ impl MusPlayNote {
 }
 
 /// Event 3
-/// 
+///
 /// A system event is a controller with no associated value
 /// The following values are valid, with their corresponding MIDI controller numbers:
-/// 
+///
 /// See here for more details: https://moddingwiki.shikadi.net/wiki/MUS_Format
 pub struct MusSystemEvent(pub u8);
 
@@ -159,11 +133,11 @@ impl MusSystemEvent {
 }
 
 /// Event 4
-/// 
+///
 /// A controller assigned to a value
-/// 
+///
 /// See here for more details: https://moddingwiki.shikadi.net/wiki/MUS_Format
-/// 
+///
 pub struct MusController(pub u8, pub u8);
 
 impl MusController {
@@ -184,14 +158,14 @@ pub struct Mus {
     /// Header
     header: MusHeader,
     /// Raw events content
-    event_buffer: Vec<u8>
+    event_buffer: Vec<u8>,
 }
 
 impl Default for Mus {
     fn default() -> Self {
         Self {
             header: MusHeader::default(),
-            event_buffer: Vec::new()
+            event_buffer: Vec::new(),
         }
     }
 }
@@ -217,25 +191,32 @@ impl Mus {
     }
 }
 
-impl From<&[u8]> for Mus {
-    fn from(value: &[u8]) -> Self {
+impl TryFrom<&[u8]> for Mus {
+    type Error = WadError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let header = MusHeader::from(value);
 
         let offset = (16 + (header.instr_count * 2)) as usize;
+
+        if offset >= value.len() {
+            return Err(WadError::InvalidLump);
+        }
+
         let event_buffer = value[offset..].to_vec();
 
-        Self {
+        let mus = Self {
             header,
-            event_buffer
-        }
+            event_buffer,
+        };
+
+        Ok(mus)
     }
 }
 
 /// Take a value `value` that represents the MUS controller value
 /// then convert it as a MIDI one
-pub fn controller_as_midi(
-    value: u8
-) -> Result<u8, WadError> {
+pub fn controller_as_midi(value: u8) -> Result<u8, WadError> {
     let ret = match value {
         0 | 1 => 0,
         2 => 1,
@@ -251,7 +232,7 @@ pub fn controller_as_midi(
         12 => 126,
         13 => 127,
         14 => 121,
-        _ => return Err(WadError::InvalidLump)
+        _ => return Err(WadError::InvalidLump),
     };
 
     Ok(ret)
