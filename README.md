@@ -3,7 +3,18 @@
 ![build](https://github.com/theobori/tinywad/actions/workflows/build.yml/badge.svg)
 
 
-A tiny lib to manage WAD file like DOOM1/2, HEXEN, etc..
+A library to manage WAD for DOOM based game. It has been tested with the following IWAD:
+- DOOM.WAD
+- DOOM2.WAD
+- HEXEN.WAD
+- CHEX.WAD
+- TNT.WAD
+- PLUTONIA.WAD
+- STRIFE0.WAD
+- STRIFE1.WAD
+- DOOMU.WAD
+- DOOM2F.WAD
+- HEXDD.WAD
 
 It supports the following features:
 - Load WAD buffer/file
@@ -30,7 +41,7 @@ use tinywad::wad::Wad;
 
 fn main() -> Result<(), WadError> {
     let mut doom_2 = Wad::new();
-    doom_2.load_from_file("wads/doom2.wad")?;
+    doom_2.load_from_file("doom2.wad")?;
 
     let gate = doom_2.lump("GATE3").unwrap();
 
@@ -61,7 +72,7 @@ use tinywad::wad::Wad;
 
 fn main() -> Result<(), WadError> {
     let mut doom_2 = Wad::new();
-    doom_2.load_from_file("wads/doom2.wad")?;
+    doom_2.load_from_file("doom2.wad")?;
 
     for pal in 0..MAX_PAL {
         doom_2.set_palette(pal);

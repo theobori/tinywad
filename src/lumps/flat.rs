@@ -57,6 +57,10 @@ impl Lump for Flat {
             None => return Err(WadError::Parse(String::from("Invalid palette"))),
         };
 
+        if FLAT_SIZE > buffer.len() {
+            return Err(WadError::Parse(String::from("Invalid FLAT length")));
+        }
+
         for i in 0..FLAT_SIZE {
             let byte = buffer[i];
             let (r, g, b, _) = palette[byte as usize].into();
